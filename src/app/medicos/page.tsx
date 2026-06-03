@@ -1,8 +1,57 @@
 import Navbar from "@/components/Navbar";
 import DoctorCard from "@/components/DoctorCard";
 import Footer from "@/components/Footer";
+import { prisma } from "@/lib/prisma";
+import MedicosSearch from "./MedicosSearch";
 
-export default function MedicosPage() {
+type MedicosPageProps = {
+  searchParams?: Promise<{
+    busca?: string;
+  }>;
+};
+
+export default async function MedicosPage({ searchParams }: MedicosPageProps) {
+  const params = await searchParams;
+  const busca = params?.busca?.trim();
+
+  const doctors = await prisma.doctor.findMany({
+    where: {
+      approved: true,
+      ...(busca
+        ? {
+            OR: [
+              {
+                specialty: {
+                  contains: busca,
+                  mode: "insensitive",
+                },
+              },
+              {
+                crmUf: {
+                  contains: busca,
+                  mode: "insensitive",
+                },
+              },
+              {
+                user: {
+                  name: {
+                    contains: busca,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      user: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
   return (
     <>
       <Navbar />
@@ -18,36 +67,26 @@ export default function MedicosPage() {
             cidade e disponibilidade.
           </p>
 
-          <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <input
-              type="text"
-              placeholder="Buscar por nome, especialidade ou cidade"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-green-600"
-            />
-          </div>
+          <MedicosSearch />
 
-          <section className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <DoctorCard
-              name="Dra. Ana Oliveira"
-              specialty="Neurologia"
-              location="São Paulo - SP"
-              price="Consulta a partir de R$ 250"
-            />
-
-            <DoctorCard
-              name="Dr. Carlos Santos"
-              specialty="Psiquiatria"
-              location="Rio de Janeiro - RJ"
-              price="Consulta a partir de R$ 300"
-            />
-
-            <DoctorCard
-              name="Dra. Mariana Costa"
-              specialty="Clínica Geral"
-              location="Belo Horizonte - MG"
-              price="Consulta a partir de R$ 220"
-            />
-          </section>
+          {doctors.length === 0 ? (
+            <p className="mt-10 text-gray-600">
+              Nenhum médico encontrado para sua busca.
+            </p>
+          ) : (
+            <section className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {doctors.map((doctor) => (
+                <DoctorCard
+                  key={doctor.id}
+                  id={doctor.id}
+                  name={doctor.user.name}
+                  specialty={doctor.specialty}
+                  location={doctor.crmUf}
+                  price={`Consulta a partir de R$ ${Number(doctor.price).toFixed(2)}`}
+                />
+              ))}
+            </section>
+          )}
         </section>
       </main>
 

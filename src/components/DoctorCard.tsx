@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 type DoctorCardProps = {
+  id: string;
   name: string;
   specialty: string;
   location: string;
@@ -6,6 +9,7 @@ type DoctorCardProps = {
 };
 
 export default function DoctorCard({
+  id,
   name,
   specialty,
   location,
@@ -24,9 +28,12 @@ export default function DoctorCard({
 
       <p className="mt-4 font-semibold text-gray-900">{price}</p>
 
-      <button className="mt-5 w-full rounded-xl bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700">
+      <Link
+        href={`/medicos/${id}`}
+        className="mt-5 block w-full rounded-xl bg-green-600 px-4 py-3 text-center font-semibold text-white hover:bg-green-700"
+      >
         Ver horários
-      </button>
+      </Link>
     </article>
   );
 }

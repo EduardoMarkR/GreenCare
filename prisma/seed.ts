@@ -83,11 +83,40 @@ async function main() {
     },
   });
 
+  const doctors = await prisma.doctor.findMany();
+
+  for (const doctor of doctors) {
+    await prisma.availability.createMany({
+      data: [
+        {
+          doctorId: doctor.id,
+          date: new Date("2026-06-10"),
+          startTime: "09:00",
+          endTime: "10:00",
+        },
+        {
+          doctorId: doctor.id,
+          date: new Date("2026-06-10"),
+          startTime: "14:00",
+          endTime: "15:00",
+        },
+        {
+          doctorId: doctor.id,
+          date: new Date("2026-06-11"),
+          startTime: "10:00",
+          endTime: "11:00",
+        },
+      ],
+    });
+  }
+
   console.log("Médicos criados:", {
     doctorUser1: doctorUser1.email,
     doctorUser2: doctorUser2.email,
     doctorUser3: doctorUser3.email,
   });
+
+  console.log("Horários criados com sucesso.");
 }
 
 main()
