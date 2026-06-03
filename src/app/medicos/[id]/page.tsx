@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
@@ -97,18 +98,19 @@ export default async function DoctorPage({ params }: Props) {
               ) : (
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {doctor.availabilities.map((availability) => (
-                    <button
-                      key={availability.id}
-                      className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-left transition hover:border-green-600 hover:bg-green-100"
+                    <Link
+                    key={availability.id}
+                    href={`/agendar/${availability.id}`}
+                    className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-left transition hover:border-green-600 hover:bg-green-100"
                     >
-                      <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-gray-900">
                         {formatDate(availability.date)}
-                      </p>
+                    </p>
 
-                      <p className="mt-1 text-green-700">
+                    <p className="mt-1 text-green-700">
                         {availability.startTime} às {availability.endTime}
-                      </p>
-                    </button>
+                    </p>
+                    </Link>
                   ))}
                 </div>
               )}
