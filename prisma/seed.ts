@@ -12,6 +12,7 @@ const prisma = new PrismaClient({
 
 const UserRole = {
   DOCTOR: "DOCTOR",
+  ADMIN: "ADMIN",
 } as const;
 
 async function main() {
@@ -22,6 +23,15 @@ async function main() {
   await prisma.doctor.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.user.deleteMany();
+
+  const adminUser = await prisma.user.create({
+    data: {
+      name: "Administrador GreenCare",
+      email: "admin@greencare.com",
+      password: "senha-temporaria",
+      role: UserRole.ADMIN,
+    },
+  });
 
   const doctorUser1 = await prisma.user.create({
     data: {
@@ -109,6 +119,8 @@ async function main() {
       ],
     });
   }
+
+  console.log("Administrador criado:", adminUser.email);
 
   console.log("Médicos criados:", {
     doctorUser1: doctorUser1.email,
