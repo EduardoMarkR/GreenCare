@@ -29,8 +29,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  doctor   Doctor?
-  patient  Patient?
+  doctor  Doctor?
+  patient Patient?
 }
 
 model Patient {
@@ -43,6 +43,7 @@ model Patient {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  documents    Document[]
 }
 
 model Doctor {
@@ -87,4 +88,15 @@ model Appointment {
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  patientId String
+  name      String
+  fileUrl   String
+  fileType  String?
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
