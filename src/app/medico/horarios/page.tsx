@@ -52,7 +52,7 @@ export default async function HorariosPage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-900">
                 Meus Horários
@@ -63,12 +63,21 @@ export default async function HorariosPage() {
               </p>
             </div>
 
-            <Link
-              href="/medico/horarios/novo"
-              className="rounded-xl bg-green-600 px-5 py-3 font-semibold text-white transition hover:bg-green-700"
-            >
-              Novo Horário
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/dashboard/medico"
+                className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+              >
+                Voltar ao Painel
+              </Link>
+
+              <Link
+                href="/medico/horarios/novo"
+                className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
+              >
+                Novo Horário
+              </Link>
+            </div>
           </div>
 
           <div className="mt-10 grid gap-4">
@@ -107,7 +116,7 @@ export default async function HorariosPage() {
 
                     <Link
                       href={`/medico/horarios/${availability.id}/editar`}
-                      className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
+                      className="rounded-full bg-blue-100 px-4 py-2 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
                     >
                       Editar
                     </Link>

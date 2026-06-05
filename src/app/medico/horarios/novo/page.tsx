@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createAvailability } from "./actions";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,6 +10,22 @@ export default function NovoHorarioPage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-2xl px-6 py-16">
+          <div className="mb-6 flex justify-between">
+            <Link
+              href="/medico/horarios"
+              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
+            >
+              Voltar para Horários
+            </Link>
+
+            <Link
+              href="/dashboard/medico"
+              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
+            >
+              Painel Médico
+            </Link>
+          </div>
+
           <div className="rounded-3xl bg-white p-8 shadow-md">
             <h1 className="text-3xl font-bold text-gray-900">
               Novo Horário

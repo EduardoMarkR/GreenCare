@@ -41,24 +41,32 @@ export default async function PerfilPacientePage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-3xl px-6 py-16">
-          <div className="rounded-3xl bg-white p-8 shadow-md">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Meu Perfil
-              </h1>
-
-              <Link
-                href="/dashboard/paciente"
-                className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
-              >
-                Voltar
-              </Link>
-            </div>
-
-            <form
-              action={updatePatientProfile}
-              className="mt-8 space-y-6"
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
+            <Link
+              href="/dashboard/paciente"
+              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
             >
+              Voltar ao Painel
+            </Link>
+
+            <Link
+              href="/medicos"
+              className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
+            >
+              Agendar Consulta
+            </Link>
+          </div>
+
+          <div className="rounded-3xl bg-white p-8 shadow-md">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Meu Perfil
+            </h1>
+
+            <p className="mt-2 text-gray-600">
+              Atualize seus dados pessoais e informações de contato.
+            </p>
+
+            <form action={updatePatientProfile} className="mt-8 space-y-6">
               <div>
                 <label className="mb-2 block font-medium text-gray-700">
                   Nome

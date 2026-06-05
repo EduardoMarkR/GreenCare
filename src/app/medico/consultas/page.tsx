@@ -72,7 +72,7 @@ export default async function ConsultasMedicoPage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-900">
                 Minhas Consultas
@@ -83,12 +83,21 @@ export default async function ConsultasMedicoPage() {
               </p>
             </div>
 
-            <Link
-              href="/dashboard/medico"
-              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
-            >
-              Voltar ao painel
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/dashboard/medico"
+                className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+              >
+                Voltar ao Painel
+              </Link>
+
+              <Link
+                href="/medico/horarios"
+                className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
+              >
+                Minha Agenda
+              </Link>
+            </div>
           </div>
 
           <div className="mt-10 grid gap-4">

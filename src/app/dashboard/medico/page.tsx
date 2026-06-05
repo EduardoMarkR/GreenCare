@@ -146,7 +146,20 @@ export default async function DashboardMedicoPage() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+          <div className="mt-10 grid gap-6 lg:grid-cols-4">
+            <Link
+              href="/dashboard/medico/perfil"
+              className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md"
+            >
+              <h2 className="text-lg font-bold text-gray-900">
+                Perfil profissional
+              </h2>
+
+              <p className="mt-3 text-gray-600">
+                Editar dados, CRM, bio e valor da consulta.
+              </p>
+            </Link>
+
             <Link
               href="/medico/horarios"
               className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md"

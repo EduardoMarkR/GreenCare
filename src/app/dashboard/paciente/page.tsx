@@ -96,7 +96,7 @@ export default async function DashboardPacientePage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-green-700">
                 Área do paciente
@@ -111,12 +111,21 @@ export default async function DashboardPacientePage() {
               </p>
             </div>
 
-            <Link
-              href="/logout"
-              className="rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700"
-            >
-              Sair
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/dashboard/paciente/perfil"
+                className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+              >
+                Meu Perfil
+              </Link>
+
+              <Link
+                href="/logout"
+                className="rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-red-700"
+              >
+                Sair
+              </Link>
+            </div>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -164,7 +173,7 @@ export default async function DashboardPacientePage() {
           </div>
 
           <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">
                   Minhas consultas
@@ -177,18 +186,11 @@ export default async function DashboardPacientePage() {
 
               <Link
                 href="/medicos"
-                className="rounded-xl bg-green-600 px-5 py-3 font-semibold text-white transition hover:bg-green-700"
+                className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
               >
                 Agendar nova consulta
               </Link>
             </div>
-
-            <Link
-              href="/dashboard/paciente/perfil"
-              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
-            >
-              Meu Perfil
-            </Link>
 
             <div className="mt-6 space-y-4">
               {proximasConsultas.length === 0 && (
