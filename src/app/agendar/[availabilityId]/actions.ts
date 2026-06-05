@@ -1,19 +1,30 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
-export async function createAppointment(
-  availabilityId: string,
-  formData: FormData
-) {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
-  const notes = String(formData.get("notes") ?? "").trim();
+export async function createAppointment(formData: FormData) {
+  const availabilityId = String(formData.get("availabilityId") ?? "");
+  const notes = String(formData.get("notes") ?? "");
 
-  if (!name || !email || !phone) {
-    throw new Error("Nome, e-mail e telefone são obrigatórios.");
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+  const userRole = cookieStore.get("userRole")?.value;
+
+  if (!userId || userRole !== "PATIENT") {
+    redirect("/login");
+  }
+
+  const patient = await prisma.patient.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!patient) {
+    throw new Error("Paciente não encontrado.");
   }
 
   const availability = await prisma.availability.findUnique({
@@ -26,43 +37,15 @@ export async function createAppointment(
     throw new Error("Horário não encontrado.");
   }
 
-  const user = await prisma.user.upsert({
-    where: {
-      email,
-    },
-    update: {
-      name,
-    },
-    create: {
-      name,
-      email,
-      password: "senha-temporaria",
-      role: "PATIENT",
-    },
-  });
-
-  const patient = await prisma.patient.upsert({
-    where: {
-      userId: user.id,
-    },
-    update: {
-      phone,
-    },
-    create: {
-      userId: user.id,
-      phone,
-    },
-  });
-
   await prisma.appointment.create({
     data: {
       patientId: patient.id,
       doctorId: availability.doctorId,
       date: availability.date,
-      notes,
       status: "PENDING",
+      notes,
     },
   });
 
-  redirect("/agendamento-confirmado");
+  redirect("/dashboard/paciente");
 }

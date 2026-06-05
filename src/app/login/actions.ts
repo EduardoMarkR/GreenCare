@@ -37,8 +37,8 @@ export async function loginAction(formData: FormData) {
   }
 
   if (user.role === "DOCTOR") {
-    redirect("/medico/dashboard");
+    redirect("/dashboard/medico");
   }
 
-  redirect("/paciente/dashboard");
+  redirect("/dashboard/paciente");
 }

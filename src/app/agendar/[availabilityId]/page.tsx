@@ -15,6 +15,7 @@ function formatDate(date: Date) {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 
@@ -73,50 +74,18 @@ export default async function AgendarPage({ params }: Props) {
               </p>
             </div>
 
-            <form
-            action={createAppointment.bind(null, availability.id)}
-            className="mt-8 space-y-5"
-            >
-              <div>
-                <label className="mb-2 block font-semibold text-gray-900">
-                  Nome completo
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Digite seu nome"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-green-600"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block font-semibold text-gray-900">
-                  E-mail
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Digite seu e-mail"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-green-600"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block font-semibold text-gray-900">
-                  Telefone
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  placeholder="Digite seu telefone"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-green-600"
-                />
-              </div>
+            <form action={createAppointment} className="mt-8 space-y-5">
+              <input
+                type="hidden"
+                name="availabilityId"
+                value={availability.id}
+              />
 
               <div>
                 <label className="mb-2 block font-semibold text-gray-900">
                   Motivo da consulta
                 </label>
+
                 <textarea
                   name="notes"
                   placeholder="Conte brevemente o motivo da consulta"

@@ -1,20 +1,40 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
+import { deleteAvailability } from "./actions";
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR").format(date);
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+  }).format(date);
 }
 
 export default async function HorariosPage() {
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+  const userRole = cookieStore.get("userRole")?.value;
+
+  if (!userId || userRole !== "DOCTOR") {
+    redirect("/login");
+  }
+
+  const doctor = await prisma.doctor.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!doctor) {
+    throw new Error("Médico não encontrado.");
+  }
+
   const availabilities = await prisma.availability.findMany({
-    include: {
-      doctor: {
-        include: {
-          user: true,
-        },
-      },
+    where: {
+      doctorId: doctor.id,
     },
     orderBy: [
       {
@@ -52,15 +72,23 @@ export default async function HorariosPage() {
           </div>
 
           <div className="mt-10 grid gap-4">
+            {availabilities.length === 0 && (
+              <div className="rounded-2xl bg-white p-6 shadow">
+                <p className="text-gray-600">
+                  Você ainda não cadastrou nenhum horário.
+                </p>
+              </div>
+            )}
+
             {availabilities.map((availability) => (
               <article
                 key={availability.id}
                 className="rounded-2xl bg-white p-5 shadow"
               >
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="font-semibold text-gray-900">
-                      {availability.doctor.user.name}
+                      Horário disponível
                     </p>
 
                     <p className="text-gray-600">
@@ -72,9 +100,33 @@ export default async function HorariosPage() {
                     </p>
                   </div>
 
-                  <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800">
-                    Disponível
-                  </span>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800">
+                      Disponível
+                    </span>
+
+                    <Link
+                      href={`/medico/horarios/${availability.id}/editar`}
+                      className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
+                    >
+                      Editar
+                    </Link>
+
+                    <form action={deleteAvailability}>
+                      <input
+                        type="hidden"
+                        name="availabilityId"
+                        value={availability.id}
+                      />
+
+                      <button
+                        type="submit"
+                        className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-200"
+                      >
+                        Excluir horário
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </article>
             ))}

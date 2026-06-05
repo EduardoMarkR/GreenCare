@@ -1,3 +1,4 @@
+import { createAvailability } from "./actions";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -17,7 +18,10 @@ export default function NovoHorarioPage() {
               Cadastre uma nova disponibilidade para consultas.
             </p>
 
-            <form className="mt-8 space-y-6">
+            <form
+              action={createAvailability}
+              className="mt-8 space-y-6"
+            >
               <div>
                 <label className="mb-2 block font-medium text-gray-700">
                   Data
@@ -25,6 +29,8 @@ export default function NovoHorarioPage() {
 
                 <input
                   type="date"
+                  name="date"
+                  required
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-green-600"
                 />
               </div>
@@ -36,6 +42,8 @@ export default function NovoHorarioPage() {
 
                 <input
                   type="time"
+                  name="startTime"
+                  required
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-green-600"
                 />
               </div>
@@ -47,6 +55,8 @@ export default function NovoHorarioPage() {
 
                 <input
                   type="time"
+                  name="endTime"
+                  required
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-green-600"
                 />
               </div>

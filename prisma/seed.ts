@@ -11,6 +11,7 @@ const prisma = new PrismaClient({
 });
 
 const UserRole = {
+  PATIENT: "PATIENT",
   DOCTOR: "DOCTOR",
   ADMIN: "ADMIN",
 } as const;
@@ -51,6 +52,9 @@ async function main() {
         },
       },
     },
+    include: {
+      doctor: true,
+    },
   });
 
   const doctorUser2 = await prisma.user.create({
@@ -70,6 +74,9 @@ async function main() {
           approved: true,
         },
       },
+    },
+    include: {
+      doctor: true,
     },
   });
 
@@ -91,6 +98,27 @@ async function main() {
         },
       },
     },
+    include: {
+      doctor: true,
+    },
+  });
+
+  const patientUser = await prisma.user.create({
+    data: {
+      name: "Paciente Teste",
+      email: "paciente@greencare.com",
+      password: "123456",
+      role: UserRole.PATIENT,
+      patient: {
+        create: {
+          phone: "(11) 99999-9999",
+          birthDate: new Date("1995-01-01T12:00:00"),
+        },
+      },
+    },
+    include: {
+      patient: true,
+    },
   });
 
   const doctors = await prisma.doctor.findMany();
@@ -100,19 +128,19 @@ async function main() {
       data: [
         {
           doctorId: doctor.id,
-          date: new Date("2026-06-10"),
+          date: new Date("2026-06-10T12:00:00"),
           startTime: "09:00",
           endTime: "10:00",
         },
         {
           doctorId: doctor.id,
-          date: new Date("2026-06-10"),
+          date: new Date("2026-06-10T12:00:00"),
           startTime: "14:00",
           endTime: "15:00",
         },
         {
           doctorId: doctor.id,
-          date: new Date("2026-06-11"),
+          date: new Date("2026-06-11T12:00:00"),
           startTime: "10:00",
           endTime: "11:00",
         },
@@ -120,7 +148,38 @@ async function main() {
     });
   }
 
+  if (!patientUser.patient || !doctorUser1.doctor || !doctorUser2.doctor || !doctorUser3.doctor) {
+    throw new Error("Erro ao criar dados relacionados do seed.");
+  }
+
+  await prisma.appointment.createMany({
+    data: [
+      {
+        patientId: patientUser.patient.id,
+        doctorId: doctorUser1.doctor.id,
+        date: new Date("2026-06-12T12:00:00"),
+        status: "PENDING",
+        notes: "Consulta inicial para avaliação.",
+      },
+      {
+        patientId: patientUser.patient.id,
+        doctorId: doctorUser2.doctor.id,
+        date: new Date("2026-06-13T12:00:00"),
+        status: "CONFIRMED",
+        notes: "Retorno para acompanhamento.",
+      },
+      {
+        patientId: patientUser.patient.id,
+        doctorId: doctorUser3.doctor.id,
+        date: new Date("2026-06-14T12:00:00"),
+        status: "COMPLETED",
+        notes: "Consulta concluída de teste.",
+      },
+    ],
+  });
+
   console.log("Administrador criado:", adminUser.email);
+  console.log("Paciente criado:", patientUser.email);
 
   console.log("Médicos criados:", {
     doctorUser1: doctorUser1.email,
@@ -129,6 +188,7 @@ async function main() {
   });
 
   console.log("Horários criados com sucesso.");
+  console.log("Consultas de teste criadas com sucesso.");
 }
 
 main()
