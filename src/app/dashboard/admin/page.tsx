@@ -48,6 +48,8 @@ export default async function DashboardAdminPage() {
 
   const [
     totalDoctors,
+    approvedDoctors,
+    pendingDoctors,
     totalPatients,
     totalAppointments,
     pendingAppointments,
@@ -59,6 +61,16 @@ export default async function DashboardAdminPage() {
     recentAppointments,
   ] = await Promise.all([
     prisma.doctor.count(),
+    prisma.doctor.count({
+      where: {
+        approved: true,
+      },
+    }),
+    prisma.doctor.count({
+      where: {
+        approved: false,
+      },
+    }),
     prisma.patient.count(),
     prisma.appointment.count(),
     prisma.appointment.count({
@@ -121,8 +133,22 @@ export default async function DashboardAdminPage() {
       title: "Médicos cadastrados",
       value: totalDoctors,
       icon: "👨‍⚕️",
-      href: "/medicos",
+      href: "/dashboard/admin/medicos",
       color: "text-green-700",
+    },
+    {
+      title: "Médicos aprovados",
+      value: approvedDoctors,
+      icon: "✅",
+      href: "/dashboard/admin/medicos",
+      color: "text-green-700",
+    },
+    {
+      title: "Médicos pendentes",
+      value: pendingDoctors,
+      icon: "⏳",
+      href: "/dashboard/admin/medicos",
+      color: "text-yellow-600",
     },
     {
       title: "Pacientes cadastrados",
@@ -205,6 +231,13 @@ export default async function DashboardAdminPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
+                href="/dashboard/admin/medicos"
+                className="rounded-xl border border-green-600 px-5 py-3 text-center font-semibold text-green-700 transition hover:bg-green-50"
+              >
+                Gestão de Médicos
+              </Link>
+
+              <Link
                 href="/admin/agendamentos"
                 className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
               >
@@ -247,6 +280,25 @@ export default async function DashboardAdminPage() {
               </h2>
 
               <div className="mt-6 space-y-5">
+                <div>
+                  <div className="flex justify-between text-sm font-medium text-gray-700">
+                    <span>Médicos aprovados</span>
+                    <span>{approvedDoctors}</span>
+                  </div>
+
+                  <div className="mt-2 h-3 rounded-full bg-gray-100">
+                    <div
+                      className="h-3 rounded-full bg-green-500"
+                      style={{
+                        width:
+                          totalDoctors > 0
+                            ? `${(approvedDoctors / totalDoctors) * 100}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <div className="flex justify-between text-sm font-medium text-gray-700">
                     <span>Consultas pendentes</span>
@@ -330,8 +382,8 @@ export default async function DashboardAdminPage() {
 
               <p className="mt-4 text-green-50">
                 A plataforma já possui autenticação, dashboards, agendamentos,
-                controle de status, perfis, horários médicos e upload de
-                documentos.
+                controle de status, perfis, horários médicos, upload de
+                documentos e gestão de médicos.
               </p>
 
               <div className="mt-6 rounded-2xl bg-white/10 p-4">

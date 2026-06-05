@@ -1,0 +1,37 @@
+"use server";
+
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+
+export async function updateDoctorApproval(formData: FormData) {
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+  const userRole = cookieStore.get("userRole")?.value;
+
+  if (!userId || userRole !== "ADMIN") {
+    redirect("/login");
+  }
+
+  const doctorId = String(formData.get("doctorId") ?? "");
+  const approved = String(formData.get("approved") ?? "") === "true";
+
+  if (!doctorId) {
+    throw new Error("Médico não informado.");
+  }
+
+  await prisma.doctor.update({
+    where: {
+      id: doctorId,
+    },
+    data: {
+      approved,
+    },
+  });
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/medicos");
+  revalidatePath("/medicos");
+}
