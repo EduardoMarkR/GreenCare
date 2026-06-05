@@ -183,6 +183,13 @@ export default async function DashboardPacientePage() {
               </Link>
             </div>
 
+            <Link
+              href="/dashboard/paciente/perfil"
+              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
+            >
+              Meu Perfil
+            </Link>
+
             <div className="mt-6 space-y-4">
               {proximasConsultas.length === 0 && (
                 <p className="text-gray-600">
