@@ -1,6 +1,36 @@
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
+
+function getStatusClass(status: string) {
+  if (status === "PENDING") {
+    return "bg-yellow-100 text-yellow-800";
+  }
+
+  if (status === "CONFIRMED") {
+    return "bg-green-100 text-green-800";
+  }
+
+  if (status === "CANCELLED") {
+    return "bg-red-100 text-red-800";
+  }
+
+  if (status === "COMPLETED") {
+    return "bg-blue-100 text-blue-800";
+  }
+
+  return "bg-gray-100 text-gray-800";
+}
+
+function getStatusLabel(status: string) {
+  if (status === "PENDING") return "Pendente";
+  if (status === "CONFIRMED") return "Confirmada";
+  if (status === "CANCELLED") return "Cancelada";
+  if (status === "COMPLETED") return "Concluída";
+
+  return status;
+}
 
 export default async function AdminAgendamentosPage() {
   const appointments = await prisma.appointment.findMany({
@@ -27,13 +57,24 @@ export default async function AdminAgendamentosPage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-7xl px-6 py-16">
-          <h1 className="text-4xl font-bold text-gray-900">
-            Agendamentos
-          </h1>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900">
+                Agendamentos
+              </h1>
 
-          <p className="mt-3 text-gray-600">
-            Visualize todos os agendamentos realizados na plataforma.
-          </p>
+              <p className="mt-3 text-gray-600">
+                Visualize todos os agendamentos realizados na plataforma.
+              </p>
+            </div>
+
+            <Link
+              href="/dashboard/admin"
+              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
+            >
+              Voltar ao Painel
+            </Link>
+          </div>
 
           <div className="mt-10 overflow-hidden rounded-2xl bg-white shadow-md">
             {appointments.length === 0 ? (
@@ -73,7 +114,7 @@ export default async function AdminAgendamentosPage() {
                       </td>
 
                       <td className="p-4 text-gray-900">
-                        {appointment.doctor.user.name}
+                        Dr(a). {appointment.doctor.user.name}
                       </td>
 
                       <td className="p-4 text-gray-900">
@@ -83,8 +124,12 @@ export default async function AdminAgendamentosPage() {
                       </td>
 
                       <td className="p-4">
-                        <span className="rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
-                          {appointment.status}
+                        <span
+                          className={`rounded-full px-3 py-1 text-sm font-medium ${getStatusClass(
+                            appointment.status
+                          )}`}
+                        >
+                          {getStatusLabel(appointment.status)}
                         </span>
                       </td>
                     </tr>

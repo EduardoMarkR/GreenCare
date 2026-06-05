@@ -10,17 +10,17 @@ export default function NovoHorarioPage() {
 
       <main className="min-h-screen bg-gray-50">
         <section className="mx-auto max-w-2xl px-6 py-16">
-          <div className="mb-6 flex justify-between">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
             <Link
               href="/medico/horarios"
-              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
+              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
             >
               Voltar para Horários
             </Link>
 
             <Link
               href="/dashboard/medico"
-              className="rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 transition hover:bg-gray-100"
+              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
             >
               Painel Médico
             </Link>
@@ -35,10 +35,7 @@ export default function NovoHorarioPage() {
               Cadastre uma nova disponibilidade para consultas.
             </p>
 
-            <form
-              action={createAvailability}
-              className="mt-8 space-y-6"
-            >
+            <form action={createAvailability} className="mt-8 space-y-6">
               <div>
                 <label className="mb-2 block font-medium text-gray-700">
                   Data
