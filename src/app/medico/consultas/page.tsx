@@ -58,6 +58,11 @@ export default async function ConsultasMedicoPage() {
       patient: {
         include: {
           user: true,
+          documents: {
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
         },
       },
     },
@@ -79,7 +84,7 @@ export default async function ConsultasMedicoPage() {
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Acompanhe todas as consultas marcadas com você.
+                Acompanhe consultas e documentos enviados pelos pacientes.
               </p>
             </div>
 
@@ -114,101 +119,145 @@ export default async function ConsultasMedicoPage() {
                 key={appointment.id}
                 className="rounded-2xl bg-white p-5 shadow"
               >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {appointment.patient.user.name}
-                    </p>
-
-                    <p className="mt-1 text-gray-600">
-                      {formatDate(appointment.date)}
-                    </p>
-
-                    {appointment.notes && (
-                      <p className="mt-2 text-sm text-gray-500">
-                        Observações: {appointment.notes}
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {appointment.patient.user.name}
                       </p>
-                    )}
+
+                      <p className="mt-1 text-gray-600">
+                        {formatDate(appointment.date)}
+                      </p>
+
+                      {appointment.notes && (
+                        <p className="mt-2 text-sm text-gray-500">
+                          Observações: {appointment.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-3 md:items-end">
+                      <span
+                        className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getStatusClass(
+                          appointment.status
+                        )}`}
+                      >
+                        {getStatusLabel(appointment.status)}
+                      </span>
+
+                      <div className="flex flex-wrap gap-2">
+                        {appointment.status !== "CONFIRMED" && (
+                          <form action={updateAppointmentStatus}>
+                            <input
+                              type="hidden"
+                              name="appointmentId"
+                              value={appointment.id}
+                            />
+
+                            <input
+                              type="hidden"
+                              name="status"
+                              value="CONFIRMED"
+                            />
+
+                            <button
+                              type="submit"
+                              className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800 transition hover:bg-green-200"
+                            >
+                              Confirmar
+                            </button>
+                          </form>
+                        )}
+
+                        {appointment.status !== "CANCELLED" && (
+                          <form action={updateAppointmentStatus}>
+                            <input
+                              type="hidden"
+                              name="appointmentId"
+                              value={appointment.id}
+                            />
+
+                            <input
+                              type="hidden"
+                              name="status"
+                              value="CANCELLED"
+                            />
+
+                            <button
+                              type="submit"
+                              className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-200"
+                            >
+                              Cancelar
+                            </button>
+                          </form>
+                        )}
+
+                        {appointment.status !== "COMPLETED" && (
+                          <form action={updateAppointmentStatus}>
+                            <input
+                              type="hidden"
+                              name="appointmentId"
+                              value={appointment.id}
+                            />
+
+                            <input
+                              type="hidden"
+                              name="status"
+                              value="COMPLETED"
+                            />
+
+                            <button
+                              type="submit"
+                              className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-200"
+                            >
+                              Concluir
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 md:items-end">
-                    <span
-                      className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getStatusClass(
-                        appointment.status
-                      )}`}
-                    >
-                      {getStatusLabel(appointment.status)}
-                    </span>
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <h3 className="font-semibold text-gray-900">
+                      Documentos do paciente
+                    </h3>
 
-                    <div className="flex flex-wrap gap-2">
-                      {appointment.status !== "CONFIRMED" && (
-                        <form action={updateAppointmentStatus}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={appointment.id}
-                          />
-
-                          <input
-                            type="hidden"
-                            name="status"
-                            value="CONFIRMED"
-                          />
-
-                          <button
-                            type="submit"
-                            className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800 transition hover:bg-green-200"
-                          >
-                            Confirmar
-                          </button>
-                        </form>
+                    <div className="mt-3 space-y-3">
+                      {appointment.patient.documents.length === 0 && (
+                        <p className="text-sm text-gray-600">
+                          Nenhum documento enviado por este paciente.
+                        </p>
                       )}
 
-                      {appointment.status !== "CANCELLED" && (
-                        <form action={updateAppointmentStatus}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={appointment.id}
-                          />
+                      {appointment.patient.documents.map((document) => (
+                        <div
+                          key={document.id}
+                          className="flex flex-col gap-2 rounded-lg bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {document.name}
+                            </p>
 
-                          <input
-                            type="hidden"
-                            name="status"
-                            value="CANCELLED"
-                          />
+                            {document.fileType && (
+                              <p className="text-sm text-gray-500">
+                                {document.fileType}
+                              </p>
+                            )}
+                          </div>
 
-                          <button
-                            type="submit"
-                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-200"
+                          <a
+                            href={document.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm font-semibold text-green-700 hover:text-green-800"
                           >
-                            Cancelar
-                          </button>
-                        </form>
-                      )}
-
-                      {appointment.status !== "COMPLETED" && (
-                        <form action={updateAppointmentStatus}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={appointment.id}
-                          />
-
-                          <input
-                            type="hidden"
-                            name="status"
-                            value="COMPLETED"
-                          />
-
-                          <button
-                            type="submit"
-                            className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-200"
-                          >
-                            Concluir
-                          </button>
-                        </form>
-                      )}
+                            Abrir documento
+                          </a>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
