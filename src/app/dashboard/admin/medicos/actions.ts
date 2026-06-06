@@ -16,10 +16,14 @@ export async function updateDoctorApproval(formData: FormData) {
   }
 
   const doctorId = String(formData.get("doctorId") ?? "");
-  const approved = String(formData.get("approved") ?? "") === "true";
+  const approvalStatus = String(formData.get("approvalStatus") ?? "");
 
   if (!doctorId) {
     throw new Error("Médico não informado.");
+  }
+
+  if (!["PENDING", "APPROVED", "REJECTED"].includes(approvalStatus)) {
+    throw new Error("Status inválido.");
   }
 
   await prisma.doctor.update({
@@ -27,7 +31,8 @@ export async function updateDoctorApproval(formData: FormData) {
       id: doctorId,
     },
     data: {
-      approved,
+      approvalStatus: approvalStatus as "PENDING" | "APPROVED" | "REJECTED",
+      approved: approvalStatus === "APPROVED",
     },
   });
 
