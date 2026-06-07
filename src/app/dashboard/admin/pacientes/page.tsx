@@ -5,6 +5,12 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
 
+type AdminPacientesPageProps = {
+  searchParams?: Promise<{
+    busca?: string;
+  }>;
+};
+
 function formatDate(date?: Date | null) {
   if (!date) {
     return "Não informado";
@@ -15,7 +21,9 @@ function formatDate(date?: Date | null) {
   }).format(date);
 }
 
-export default async function AdminPacientesPage() {
+export default async function AdminPacientesPage({
+  searchParams,
+}: AdminPacientesPageProps) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
@@ -25,7 +33,38 @@ export default async function AdminPacientesPage() {
     redirect("/login");
   }
 
+  const params = await searchParams;
+  const searchTerm = params?.busca?.trim() ?? "";
+
   const patients = await prisma.patient.findMany({
+    where: searchTerm
+      ? {
+          OR: [
+            {
+              phone: {
+                contains: searchTerm,
+                mode: "insensitive",
+              },
+            },
+            {
+              user: {
+                name: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+            },
+            {
+              user: {
+                email: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+            },
+          ],
+        }
+      : undefined,
     include: {
       user: true,
       appointments: true,
@@ -35,6 +74,8 @@ export default async function AdminPacientesPage() {
       createdAt: "desc",
     },
   });
+
+  const totalPatients = await prisma.patient.count();
 
   return (
     <>
@@ -65,10 +106,64 @@ export default async function AdminPacientesPage() {
             </Link>
           </div>
 
+          <div className="mt-10 rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Buscar paciente
+                </p>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Total de pacientes cadastrados: {totalPatients}
+                </p>
+              </div>
+
+              {searchTerm && (
+                <p className="text-sm text-gray-500">
+                  Resultado para:{" "}
+                  <span className="font-semibold text-gray-800">
+                    {searchTerm}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <form
+              action="/dashboard/admin/pacientes"
+              className="mt-4 flex flex-col gap-3 md:flex-row"
+            >
+              <input
+                type="text"
+                name="busca"
+                defaultValue={searchTerm}
+                placeholder="Buscar por nome, e-mail ou telefone"
+                className="min-h-12 flex-1 rounded-xl border border-gray-300 px-4 text-gray-900 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              />
+
+              <button
+                type="submit"
+                className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+              >
+                Buscar
+              </button>
+
+              {searchTerm && (
+                <Link
+                  href="/dashboard/admin/pacientes"
+                  className="rounded-xl border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Limpar
+                </Link>
+              )}
+            </form>
+          </div>
+
           <div className="mt-10 grid gap-4">
             {patients.length === 0 && (
               <div className="rounded-2xl bg-white p-6 shadow">
-                <p className="text-gray-600">Nenhum paciente cadastrado.</p>
+                <p className="text-gray-600">
+                  Nenhum paciente encontrado para os critérios informados.
+                </p>
               </div>
             )}
 
