@@ -96,26 +96,35 @@ export default async function AdminPacientesPage() {
                     </p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl bg-green-50 px-5 py-4">
-                      <p className="text-sm font-semibold text-green-800">
-                        Consultas
-                      </p>
+                  <div className="flex flex-col gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-green-50 px-5 py-4">
+                        <p className="text-sm font-semibold text-green-800">
+                          Consultas
+                        </p>
 
-                      <p className="mt-1 text-2xl font-bold text-green-900">
-                        {patient.appointments.length}
-                      </p>
+                        <p className="mt-1 text-2xl font-bold text-green-900">
+                          {patient.appointments.length}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-blue-50 px-5 py-4">
+                        <p className="text-sm font-semibold text-blue-800">
+                          Documentos
+                        </p>
+
+                        <p className="mt-1 text-2xl font-bold text-blue-900">
+                          {patient.documents.length}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="rounded-xl bg-blue-50 px-5 py-4">
-                      <p className="text-sm font-semibold text-blue-800">
-                        Documentos
-                      </p>
-
-                      <p className="mt-1 text-2xl font-bold text-blue-900">
-                        {patient.documents.length}
-                      </p>
-                    </div>
+                    <Link
+                      href={`/dashboard/admin/pacientes/${patient.id}`}
+                      className="rounded-xl bg-blue-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-blue-700"
+                    >
+                      Ver detalhes
+                    </Link>
                   </div>
                 </div>
               </article>

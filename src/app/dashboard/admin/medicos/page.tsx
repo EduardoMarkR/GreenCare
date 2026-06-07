@@ -214,7 +214,14 @@ export default async function AdminMedicosPage({
                   <div className="flex flex-col gap-3 lg:items-end">
                     {getStatusBadge(doctor.approvalStatus)}
 
-                    <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={`/dashboard/admin/medicos/${doctor.id}`}
+                      className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-200"
+                    >
+                      Ver detalhes
+                    </Link>
+
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
                       {doctor.approvalStatus !== "APPROVED" && (
                         <form action={updateDoctorApproval}>
                           <input
