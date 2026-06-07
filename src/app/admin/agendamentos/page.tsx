@@ -9,6 +9,7 @@ import { updateAppointmentStatus } from "./actions";
 type AdminAgendamentosPageProps = {
   searchParams?: Promise<{
     status?: string;
+    busca?: string;
   }>;
 };
 
@@ -42,6 +43,22 @@ function getFilterClass(isActive: boolean) {
     : "rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100";
 }
 
+function getFilterHref(status: string, searchTerm: string) {
+  const params = new URLSearchParams();
+
+  if (status !== "ALL") {
+    params.set("status", status);
+  }
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  const queryString = params.toString();
+
+  return queryString ? `/admin/agendamentos?${queryString}` : "/admin/agendamentos";
+}
+
 export default async function AdminAgendamentosPage({
   searchParams,
 }: AdminAgendamentosPageProps) {
@@ -56,6 +73,7 @@ export default async function AdminAgendamentosPage({
 
   const params = await searchParams;
   const selectedStatus = params?.status ?? "ALL";
+  const searchTerm = params?.busca?.trim() ?? "";
 
   const validStatuses = ["ALL", "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"];
   const statusFilter = validStatuses.includes(selectedStatus)
@@ -63,16 +81,69 @@ export default async function AdminAgendamentosPage({
     : "ALL";
 
   const appointments = await prisma.appointment.findMany({
-    where:
-      statusFilter === "ALL"
-        ? undefined
-        : {
+    where: {
+      ...(statusFilter !== "ALL"
+        ? {
             status: statusFilter as
               | "PENDING"
               | "CONFIRMED"
               | "CANCELLED"
               | "COMPLETED",
-          },
+          }
+        : {}),
+      ...(searchTerm
+        ? {
+            OR: [
+              {
+                notes: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+              {
+                patient: {
+                  user: {
+                    name: {
+                      contains: searchTerm,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+              {
+                patient: {
+                  user: {
+                    email: {
+                      contains: searchTerm,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+              {
+                doctor: {
+                  user: {
+                    name: {
+                      contains: searchTerm,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+              {
+                doctor: {
+                  user: {
+                    email: {
+                      contains: searchTerm,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
     include: {
       patient: {
         include: {
@@ -133,7 +204,7 @@ export default async function AdminAgendamentosPage({
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Visualize, filtre e atualize o status dos agendamentos.
+                Visualize, filtre, busque e atualize o status dos agendamentos.
               </p>
             </div>
 
@@ -183,41 +254,97 @@ export default async function AdminAgendamentosPage({
           </div>
 
           <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Buscar consulta
+                </p>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Busque por paciente, médico, e-mail ou observações.
+                </p>
+              </div>
+
+              {searchTerm && (
+                <p className="text-sm text-gray-500">
+                  Resultado para:{" "}
+                  <span className="font-semibold text-gray-800">
+                    {searchTerm}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <form
+              action="/admin/agendamentos"
+              className="mt-4 flex flex-col gap-3 md:flex-row"
+            >
+              {statusFilter !== "ALL" && (
+                <input type="hidden" name="status" value={statusFilter} />
+              )}
+
+              <input
+                type="text"
+                name="busca"
+                defaultValue={searchTerm}
+                placeholder="Buscar por paciente, médico, e-mail ou observação"
+                className="min-h-12 flex-1 rounded-xl border border-gray-300 px-4 text-gray-900 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              />
+
+              <button
+                type="submit"
+                className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+              >
+                Buscar
+              </button>
+
+              {(searchTerm || statusFilter !== "ALL") && (
+                <Link
+                  href="/admin/agendamentos"
+                  className="rounded-xl border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Limpar
+                </Link>
+              )}
+            </form>
+          </div>
+
+          <div className="mt-8 rounded-2xl bg-white p-5 shadow-sm">
             <p className="mb-4 text-sm font-semibold text-gray-700">
               Filtrar por status
             </p>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/admin/agendamentos"
+                href={getFilterHref("ALL", searchTerm)}
                 className={getFilterClass(statusFilter === "ALL")}
               >
                 Todas ({totalAppointments})
               </Link>
 
               <Link
-                href="/admin/agendamentos?status=PENDING"
+                href={getFilterHref("PENDING", searchTerm)}
                 className={getFilterClass(statusFilter === "PENDING")}
               >
                 Pendentes ({pendingAppointments})
               </Link>
 
               <Link
-                href="/admin/agendamentos?status=CONFIRMED"
+                href={getFilterHref("CONFIRMED", searchTerm)}
                 className={getFilterClass(statusFilter === "CONFIRMED")}
               >
                 Confirmadas ({confirmedAppointments})
               </Link>
 
               <Link
-                href="/admin/agendamentos?status=CANCELLED"
+                href={getFilterHref("CANCELLED", searchTerm)}
                 className={getFilterClass(statusFilter === "CANCELLED")}
               >
                 Canceladas ({cancelledAppointments})
               </Link>
 
               <Link
-                href="/admin/agendamentos?status=COMPLETED"
+                href={getFilterHref("COMPLETED", searchTerm)}
                 className={getFilterClass(statusFilter === "COMPLETED")}
               >
                 Concluídas ({completedAppointments})
@@ -228,7 +355,7 @@ export default async function AdminAgendamentosPage({
           <div className="mt-10 grid gap-4">
             {appointments.length === 0 && (
               <div className="rounded-2xl bg-white p-8 text-center text-gray-600 shadow-md">
-                Nenhuma consulta encontrada para este filtro.
+                Nenhuma consulta encontrada para os critérios informados.
               </div>
             )}
 
@@ -245,6 +372,14 @@ export default async function AdminAgendamentosPage({
 
                     <p className="mt-2 text-sm text-gray-600">
                       Médico: Dr(a). {appointment.doctor.user.name}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-600">
+                      E-mail do paciente: {appointment.patient.user.email}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-600">
+                      E-mail do médico: {appointment.doctor.user.email}
                     </p>
 
                     <p className="mt-1 text-sm text-gray-600">
