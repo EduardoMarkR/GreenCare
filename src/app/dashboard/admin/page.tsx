@@ -50,6 +50,7 @@ export default async function DashboardAdminPage() {
     totalDoctors,
     approvedDoctors,
     pendingDoctors,
+    rejectedDoctors,
     totalPatients,
     totalAppointments,
     pendingAppointments,
@@ -63,12 +64,17 @@ export default async function DashboardAdminPage() {
     prisma.doctor.count(),
     prisma.doctor.count({
       where: {
-        approved: true,
+        approvalStatus: "APPROVED",
       },
     }),
     prisma.doctor.count({
       where: {
-        approved: false,
+        approvalStatus: "PENDING",
+      },
+    }),
+    prisma.doctor.count({
+      where: {
+        approvalStatus: "REJECTED",
       },
     }),
     prisma.patient.count(),
@@ -140,22 +146,29 @@ export default async function DashboardAdminPage() {
       title: "Médicos aprovados",
       value: approvedDoctors,
       icon: "✅",
-      href: "/dashboard/admin/medicos",
+      href: "/dashboard/admin/medicos?status=APPROVED",
       color: "text-green-700",
     },
     {
       title: "Médicos pendentes",
       value: pendingDoctors,
       icon: "⏳",
-      href: "/dashboard/admin/medicos",
+      href: "/dashboard/admin/medicos?status=PENDING",
       color: "text-yellow-600",
+    },
+    {
+      title: "Médicos reprovados",
+      value: rejectedDoctors,
+      icon: "❌",
+      href: "/dashboard/admin/medicos?status=REJECTED",
+      color: "text-red-600",
     },
     {
       title: "Pacientes cadastrados",
       value: totalPatients,
       icon: "🧑",
-      href: "/admin/agendamentos",
-      color: "text-green-700",
+      href: "/dashboard/admin/pacientes",
+      color: "text-blue-700",
     },
     {
       title: "Consultas totais",
@@ -196,7 +209,7 @@ export default async function DashboardAdminPage() {
       title: "Documentos enviados",
       value: totalDocuments,
       icon: "📎",
-      href: "/dashboard/admin",
+      href: "/dashboard/admin/pacientes",
       color: "text-blue-700",
     },
     {
@@ -235,6 +248,13 @@ export default async function DashboardAdminPage() {
                 className="rounded-xl border border-green-600 px-5 py-3 text-center font-semibold text-green-700 transition hover:bg-green-50"
               >
                 Gestão de Médicos
+              </Link>
+
+              <Link
+                href="/dashboard/admin/pacientes"
+                className="rounded-xl border border-blue-600 px-5 py-3 text-center font-semibold text-blue-700 transition hover:bg-blue-50"
+              >
+                Gestão de Pacientes
               </Link>
 
               <Link
@@ -293,6 +313,44 @@ export default async function DashboardAdminPage() {
                         width:
                           totalDoctors > 0
                             ? `${(approvedDoctors / totalDoctors) * 100}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm font-medium text-gray-700">
+                    <span>Médicos pendentes</span>
+                    <span>{pendingDoctors}</span>
+                  </div>
+
+                  <div className="mt-2 h-3 rounded-full bg-gray-100">
+                    <div
+                      className="h-3 rounded-full bg-yellow-400"
+                      style={{
+                        width:
+                          totalDoctors > 0
+                            ? `${(pendingDoctors / totalDoctors) * 100}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm font-medium text-gray-700">
+                    <span>Médicos reprovados</span>
+                    <span>{rejectedDoctors}</span>
+                  </div>
+
+                  <div className="mt-2 h-3 rounded-full bg-gray-100">
+                    <div
+                      className="h-3 rounded-full bg-red-500"
+                      style={{
+                        width:
+                          totalDoctors > 0
+                            ? `${(rejectedDoctors / totalDoctors) * 100}%`
                             : "0%",
                       }}
                     />
@@ -383,14 +441,14 @@ export default async function DashboardAdminPage() {
               <p className="mt-4 text-green-50">
                 A plataforma já possui autenticação, dashboards, agendamentos,
                 controle de status, perfis, horários médicos, upload de
-                documentos e gestão de médicos.
+                documentos e gestão de médicos e pacientes.
               </p>
 
               <div className="mt-6 rounded-2xl bg-white/10 p-4">
                 <p className="text-sm text-green-50">Próxima prioridade</p>
 
                 <p className="mt-1 text-xl font-bold">
-                  Gestão administrativa completa
+                  Gestão completa de consultas
                 </p>
               </div>
 
@@ -426,9 +484,7 @@ export default async function DashboardAdminPage() {
 
             <div className="mt-6 space-y-4">
               {recentAppointments.length === 0 && (
-                <p className="text-gray-600">
-                  Nenhuma consulta encontrada.
-                </p>
+                <p className="text-gray-600">Nenhuma consulta encontrada.</p>
               )}
 
               {recentAppointments.map((appointment) => (
