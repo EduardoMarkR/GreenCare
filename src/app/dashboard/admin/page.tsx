@@ -47,6 +47,7 @@ export default async function DashboardAdminPage() {
   }
 
   const [
+    totalUsers,
     totalDoctors,
     approvedDoctors,
     pendingDoctors,
@@ -61,6 +62,7 @@ export default async function DashboardAdminPage() {
     appointments,
     recentAppointments,
   ] = await Promise.all([
+    prisma.user.count(),
     prisma.doctor.count(),
     prisma.doctor.count({
       where: {
@@ -136,6 +138,13 @@ export default async function DashboardAdminPage() {
 
   const cards = [
     {
+      title: "Usuários cadastrados",
+      value: totalUsers,
+      icon: "👥",
+      href: "/dashboard/admin/usuarios",
+      color: "text-purple-700",
+    },
+    {
       title: "Médicos cadastrados",
       value: totalDoctors,
       icon: "👨‍⚕️",
@@ -174,49 +183,49 @@ export default async function DashboardAdminPage() {
       title: "Consultas totais",
       value: totalAppointments,
       icon: "📅",
-      href: "/admin/agendamentos",
+      href: "/dashboard/admin/consultas",
       color: "text-green-700",
     },
     {
       title: "Consultas pendentes",
       value: pendingAppointments,
       icon: "⏳",
-      href: "/admin/agendamentos",
+      href: "/dashboard/admin/consultas?status=PENDING",
       color: "text-yellow-600",
     },
     {
       title: "Consultas confirmadas",
       value: confirmedAppointments,
       icon: "✅",
-      href: "/admin/agendamentos",
+      href: "/dashboard/admin/consultas?status=CONFIRMED",
       color: "text-green-700",
     },
     {
       title: "Consultas canceladas",
       value: cancelledAppointments,
       icon: "❌",
-      href: "/admin/agendamentos",
+      href: "/dashboard/admin/consultas?status=CANCELLED",
       color: "text-red-600",
     },
     {
       title: "Consultas concluídas",
       value: completedAppointments,
       icon: "🏁",
-      href: "/admin/agendamentos",
+      href: "/dashboard/admin/consultas?status=COMPLETED",
       color: "text-blue-700",
     },
     {
       title: "Documentos enviados",
       value: totalDocuments,
       icon: "📎",
-      href: "/dashboard/admin/pacientes",
+      href: "/dashboard/admin/documentos",
       color: "text-blue-700",
     },
     {
       title: "Receita prevista",
       value: formatCurrency(estimatedRevenue),
       icon: "💰",
-      href: "/admin/agendamentos",
+      href: "/dashboard/admin/consultas",
       color: "text-green-700",
     },
   ];
@@ -242,7 +251,7 @@ export default async function DashboardAdminPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
               <Link
                 href="/dashboard/admin/medicos"
                 className="rounded-xl border border-green-600 px-5 py-3 text-center font-semibold text-green-700 transition hover:bg-green-50"
@@ -258,10 +267,24 @@ export default async function DashboardAdminPage() {
               </Link>
 
               <Link
-                href="/admin/agendamentos"
+                href="/dashboard/admin/documentos"
+                className="rounded-xl border border-blue-600 px-5 py-3 text-center font-semibold text-blue-700 transition hover:bg-blue-50"
+              >
+                Gestão de Documentos
+              </Link>
+
+              <Link
+                href="/dashboard/admin/usuarios"
+                className="rounded-xl border border-purple-600 px-5 py-3 text-center font-semibold text-purple-700 transition hover:bg-purple-50"
+              >
+                Gestão de Usuários
+              </Link>
+
+              <Link
+                href="/dashboard/admin/consultas"
                 className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
               >
-                Ver agendamentos
+                Ver consultas
               </Link>
 
               <Link
@@ -441,14 +464,14 @@ export default async function DashboardAdminPage() {
               <p className="mt-4 text-green-50">
                 A plataforma já possui autenticação, dashboards, agendamentos,
                 controle de status, perfis, horários médicos, upload de
-                documentos e gestão de médicos e pacientes.
+                documentos e gestão administrativa completa.
               </p>
 
               <div className="mt-6 rounded-2xl bg-white/10 p-4">
                 <p className="text-sm text-green-50">Próxima prioridade</p>
 
                 <p className="mt-1 text-xl font-bold">
-                  Gestão completa de consultas
+                  Permissões e ações avançadas
                 </p>
               </div>
 
@@ -475,7 +498,7 @@ export default async function DashboardAdminPage() {
               </div>
 
               <Link
-                href="/admin/agendamentos"
+                href="/dashboard/admin/consultas"
                 className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
               >
                 Ver todos

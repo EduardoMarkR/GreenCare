@@ -35,6 +35,6 @@ export async function updateAppointmentStatus(formData: FormData) {
     },
   });
 
-  revalidatePath("/admin/agendamentos");
+  revalidatePath("/dashboard/admin/consultas");
   revalidatePath("/dashboard/admin");
 }
