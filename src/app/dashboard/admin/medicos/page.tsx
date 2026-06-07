@@ -9,6 +9,7 @@ import { updateDoctorApproval } from "./actions";
 type AdminMedicosPageProps = {
   searchParams?: Promise<{
     status?: string;
+    busca?: string;
   }>;
 };
 
@@ -49,6 +50,24 @@ function getFilterClass(isActive: boolean) {
     : "rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100";
 }
 
+function getFilterHref(status: string, searchTerm: string) {
+  const params = new URLSearchParams();
+
+  if (status !== "ALL") {
+    params.set("status", status);
+  }
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  const queryString = params.toString();
+
+  return queryString
+    ? `/dashboard/admin/medicos?${queryString}`
+    : "/dashboard/admin/medicos";
+}
+
 export default async function AdminMedicosPage({
   searchParams,
 }: AdminMedicosPageProps) {
@@ -63,6 +82,7 @@ export default async function AdminMedicosPage({
 
   const params = await searchParams;
   const selectedStatus = params?.status ?? "ALL";
+  const searchTerm = params?.busca?.trim() ?? "";
 
   const validStatuses = ["ALL", "PENDING", "APPROVED", "REJECTED"];
   const statusFilter = validStatuses.includes(selectedStatus)
@@ -70,15 +90,56 @@ export default async function AdminMedicosPage({
     : "ALL";
 
   const doctors = await prisma.doctor.findMany({
-    where:
-      statusFilter === "ALL"
-        ? undefined
-        : {
+    where: {
+      ...(statusFilter !== "ALL"
+        ? {
             approvalStatus: statusFilter as
               | "PENDING"
               | "APPROVED"
               | "REJECTED",
-          },
+          }
+        : {}),
+      ...(searchTerm
+        ? {
+            OR: [
+              {
+                specialty: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+              {
+                crm: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+              {
+                crmUf: {
+                  contains: searchTerm,
+                  mode: "insensitive",
+                },
+              },
+              {
+                user: {
+                  name: {
+                    contains: searchTerm,
+                    mode: "insensitive",
+                  },
+                },
+              },
+              {
+                user: {
+                  email: {
+                    contains: searchTerm,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
     include: {
       user: true,
     },
@@ -124,7 +185,7 @@ export default async function AdminMedicosPage({
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Aprove, reprove e acompanhe os profissionais cadastrados.
+                Aprove, reprove, busque e acompanhe os profissionais cadastrados.
               </p>
             </div>
 
@@ -138,33 +199,72 @@ export default async function AdminMedicosPage({
 
           <div className="mt-10 rounded-2xl bg-white p-5 shadow-sm">
             <p className="mb-4 text-sm font-semibold text-gray-700">
+              Buscar médico
+            </p>
+
+            <form
+              action="/dashboard/admin/medicos"
+              className="flex flex-col gap-3 md:flex-row"
+            >
+              {statusFilter !== "ALL" && (
+                <input type="hidden" name="status" value={statusFilter} />
+              )}
+
+              <input
+                type="text"
+                name="busca"
+                defaultValue={searchTerm}
+                placeholder="Buscar por nome, e-mail, CRM ou especialidade"
+                className="min-h-12 flex-1 rounded-xl border border-gray-300 px-4 text-gray-900 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+              />
+
+              <button
+                type="submit"
+                className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+              >
+                Buscar
+              </button>
+
+              {(searchTerm || statusFilter !== "ALL") && (
+                <Link
+                  href="/dashboard/admin/medicos"
+                  className="rounded-xl border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Limpar
+                </Link>
+              )}
+            </form>
+          </div>
+
+          <div className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+            <p className="mb-4 text-sm font-semibold text-gray-700">
               Filtrar por status
             </p>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/dashboard/admin/medicos"
+                href={getFilterHref("ALL", searchTerm)}
                 className={getFilterClass(statusFilter === "ALL")}
               >
                 Todos ({totalDoctors})
               </Link>
 
               <Link
-                href="/dashboard/admin/medicos?status=PENDING"
+                href={getFilterHref("PENDING", searchTerm)}
                 className={getFilterClass(statusFilter === "PENDING")}
               >
                 Pendentes ({pendingDoctors})
               </Link>
 
               <Link
-                href="/dashboard/admin/medicos?status=APPROVED"
+                href={getFilterHref("APPROVED", searchTerm)}
                 className={getFilterClass(statusFilter === "APPROVED")}
               >
                 Aprovados ({approvedDoctors})
               </Link>
 
               <Link
-                href="/dashboard/admin/medicos?status=REJECTED"
+                href={getFilterHref("REJECTED", searchTerm)}
                 className={getFilterClass(statusFilter === "REJECTED")}
               >
                 Reprovados ({rejectedDoctors})
@@ -176,7 +276,7 @@ export default async function AdminMedicosPage({
             {doctors.length === 0 && (
               <div className="rounded-2xl bg-white p-6 shadow">
                 <p className="text-gray-600">
-                  Nenhum médico encontrado para este filtro.
+                  Nenhum médico encontrado para os critérios informados.
                 </p>
               </div>
             )}
