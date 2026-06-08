@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { createAuditLog } from "@/lib/audit";
 
 function getFilePathFromPublicUrl(fileUrl: string) {
   const marker = "/patient-documents/";
@@ -36,6 +37,13 @@ export async function deleteDocument(formData: FormData) {
     where: {
       id: documentId,
     },
+    include: {
+      patient: {
+        include: {
+          user: true,
+        },
+      },
+    },
   });
 
   if (!document) {
@@ -43,6 +51,11 @@ export async function deleteDocument(formData: FormData) {
   }
 
   const filePath = getFilePathFromPublicUrl(document.fileUrl);
+  const patientId = document.patientId;
+  const documentName = document.name;
+  const documentType = document.fileType || "tipo não informado";
+  const patientName = document.patient.user.name;
+  const patientEmail = document.patient.user.email;
 
   if (filePath) {
     await supabase.storage.from("patient-documents").remove([filePath]);
@@ -54,8 +67,18 @@ export async function deleteDocument(formData: FormData) {
     },
   });
 
+  await createAuditLog({
+    userId,
+    action: "DELETE_DOCUMENT",
+    entity: "Document",
+    entityId: documentId,
+    details: `Admin excluiu o documento "${documentName}" (${documentType}) do paciente ${patientName} (${patientEmail}). Arquivo removido do Storage: ${
+      filePath || "não identificado"
+    }.`,
+  });
+
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/documentos");
   revalidatePath("/dashboard/admin/pacientes");
-  revalidatePath(`/dashboard/admin/pacientes/${document.patientId}`);
+  revalidatePath(`/dashboard/admin/pacientes/${patientId}`);
 }
