@@ -60,6 +60,17 @@ export async function deleteDoctor(formData: FormData) {
     },
   });
 
+  if (doctor.user.role === "DOCTOR") {
+  await prisma.user.update({
+    where: {
+      id: doctor.userId,
+    },
+    data: {
+      role: "PATIENT",
+    },
+  });
+}
+
   await createAuditLog({
     userId,
     action: "DELETE_DOCTOR",

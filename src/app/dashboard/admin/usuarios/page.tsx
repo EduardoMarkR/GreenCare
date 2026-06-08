@@ -110,8 +110,13 @@ export default async function AdminUsuariosPage({
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Visualize usuários cadastrados e gerencie seus papéis na
-                plataforma.
+                Visualize usuários cadastrados e gerencie permissões
+                administrativas da plataforma.
+              </p>
+
+              <p className="mt-2 text-sm text-gray-500">
+                Perfis médicos devem ser criados somente pelo fluxo de
+                candidatura médica e aprovação administrativa.
               </p>
             </div>
 
@@ -271,25 +276,18 @@ export default async function AdminUsuariosPage({
                           </button>
                         </form>
                       )}
-
-                      {user.role !== "DOCTOR" && (
-                        <form action={updateUserRole}>
-                          <input type="hidden" name="userId" value={user.id} />
-                          <input type="hidden" name="role" value="DOCTOR" />
-
-                          <button
-                            type="submit"
-                            className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800 transition hover:bg-green-200"
-                          >
-                            Tornar médico
-                          </button>
-                        </form>
-                      )}
                     </div>
 
                     {user.id === userId && (
                       <p className="text-xs text-gray-500">
                         Você está logado com este usuário.
+                      </p>
+                    )}
+
+                    {user.role === "PATIENT" && (
+                      <p className="text-xs text-gray-500">
+                        Para se tornar médico, este usuário deve solicitar
+                        cadastro pelo painel do paciente.
                       </p>
                     )}
                   </div>

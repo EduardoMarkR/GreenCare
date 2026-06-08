@@ -4,6 +4,15 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
+
+function getRoleLabel(role: string) {
+  if (role === "PATIENT") return "Paciente";
+  if (role === "DOCTOR") return "Médico";
+  if (role === "ADMIN") return "Administrador";
+
+  return role;
+}
 
 export async function updateUserRole(formData: FormData) {
   const cookieStore = await cookies();
@@ -22,9 +31,11 @@ export async function updateUserRole(formData: FormData) {
     throw new Error("Usuário não informado.");
   }
 
-  if (!["PATIENT", "DOCTOR", "ADMIN"].includes(role)) {
-    throw new Error("Perfil inválido.");
-  }
+  if (!["PATIENT", "ADMIN"].includes(role)) {
+  throw new Error(
+    "Não é permitido transformar usuário em médico pela gestão de usuários. Use o fluxo de candidatura médica."
+  );
+}
 
   const targetUser = await prisma.user.findUnique({
     where: {
@@ -35,6 +46,8 @@ export async function updateUserRole(formData: FormData) {
   if (!targetUser) {
     throw new Error("Usuário não encontrado.");
   }
+
+  const previousRole = targetUser.role;
 
   if (targetUser.role === "ADMIN" && role !== "ADMIN") {
     const totalAdmins = await prisma.user.count({
@@ -53,8 +66,18 @@ export async function updateUserRole(formData: FormData) {
       id: targetUserId,
     },
     data: {
-      role: role as "PATIENT" | "DOCTOR" | "ADMIN",
+      role: role as "PATIENT" | "ADMIN",
     },
+  });
+
+  await createAuditLog({
+    userId: currentUserId,
+    action: "UPDATE_USER_ROLE",
+    entity: "User",
+    entityId: targetUserId,
+    details: `Admin alterou o perfil do usuário ${targetUser.name} (${targetUser.email}) de ${getRoleLabel(
+      previousRole
+    )} para ${getRoleLabel(role)}.`,
   });
 
   revalidatePath("/dashboard/admin");
