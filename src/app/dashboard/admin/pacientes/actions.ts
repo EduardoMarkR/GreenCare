@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { createAuditLog } from "@/lib/audit";
 
 function getFilePathFromPublicUrl(fileUrl: string) {
   const marker = "/patient-documents/";
@@ -37,13 +38,20 @@ export async function deletePatient(formData: FormData) {
       id: patientId,
     },
     include: {
+      user: true,
       documents: true,
+      appointments: true,
     },
   });
 
   if (!patient) {
     throw new Error("Paciente não encontrado.");
   }
+
+  const patientName = patient.user.name;
+  const patientEmail = patient.user.email;
+  const documentsCount = patient.documents.length;
+  const appointmentsCount = patient.appointments.length;
 
   const filePaths = patient.documents
     .map((document) => getFilePathFromPublicUrl(document.fileUrl))
@@ -69,6 +77,14 @@ export async function deletePatient(formData: FormData) {
     where: {
       id: patientId,
     },
+  });
+
+  await createAuditLog({
+    userId,
+    action: "DELETE_PATIENT",
+    entity: "Patient",
+    entityId: patientId,
+    details: `Admin excluiu o paciente ${patientName} (${patientEmail}). Consultas removidas: ${appointmentsCount}. Documentos removidos: ${documentsCount}. Arquivos removidos do Storage: ${filePaths.length}.`,
   });
 
   revalidatePath("/dashboard/admin");
