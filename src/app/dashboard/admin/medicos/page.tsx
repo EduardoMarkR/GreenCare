@@ -360,6 +360,7 @@ export default async function AdminMedicosPage({
 
                       <ConfirmSubmitButton
                         message="Tem certeza que deseja excluir este médico? Horários e consultas vinculadas também serão removidos."
+                        loadingText="Excluindo..."
                         className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
                       >
                         Excluir médico
