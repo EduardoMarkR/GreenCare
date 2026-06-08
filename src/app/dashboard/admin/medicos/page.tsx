@@ -14,8 +14,11 @@ type AdminMedicosPageProps = {
     status?: string;
     busca?: string;
     success?: string;
+    pagina?: string;
   }>;
 };
+
+const DOCTORS_PER_PAGE = 20;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -72,6 +75,26 @@ function getFilterHref(status: string, searchTerm: string) {
     : "/dashboard/admin/medicos";
 }
 
+function getPaginationHref(
+  page: number,
+  statusFilter: string,
+  searchTerm: string
+) {
+  const params = new URLSearchParams();
+
+  if (statusFilter !== "ALL") {
+    params.set("status", statusFilter);
+  }
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  params.set("pagina", String(page));
+
+  return `/dashboard/admin/medicos?${params.toString()}`;
+}
+
 function getSuccessMessage(success?: string) {
   if (success === "medico-aprovado") {
     return "Médico aprovado com sucesso.";
@@ -108,90 +131,109 @@ export default async function AdminMedicosPage({
   const selectedStatus = params?.status ?? "ALL";
   const searchTerm = params?.busca?.trim() ?? "";
   const successMessage = getSuccessMessage(params?.success);
+  const currentPage = Math.max(Number(params?.pagina ?? "1"), 1);
+  const skip = (currentPage - 1) * DOCTORS_PER_PAGE;
 
   const validStatuses = ["ALL", "PENDING", "APPROVED", "REJECTED"];
   const statusFilter = validStatuses.includes(selectedStatus)
     ? selectedStatus
     : "ALL";
 
-  const doctors = await prisma.doctor.findMany({
-    where: {
-      ...(statusFilter !== "ALL"
-        ? {
-            approvalStatus: statusFilter as
-              | "PENDING"
-              | "APPROVED"
-              | "REJECTED",
-          }
-        : {}),
-      ...(searchTerm
-        ? {
-            OR: [
-              {
-                specialty: {
+  const where = {
+    ...(statusFilter !== "ALL"
+      ? {
+          approvalStatus: statusFilter as "PENDING" | "APPROVED" | "REJECTED",
+        }
+      : {}),
+    ...(searchTerm
+      ? {
+          OR: [
+            {
+              specialty: {
+                contains: searchTerm,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              crm: {
+                contains: searchTerm,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              crmUf: {
+                contains: searchTerm,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              user: {
+                name: {
                   contains: searchTerm,
-                  mode: "insensitive",
+                  mode: "insensitive" as const,
                 },
               },
-              {
-                crm: {
+            },
+            {
+              user: {
+                email: {
                   contains: searchTerm,
-                  mode: "insensitive",
+                  mode: "insensitive" as const,
                 },
               },
-              {
-                crmUf: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
-              },
-              {
-                user: {
-                  name: {
-                    contains: searchTerm,
-                    mode: "insensitive",
-                  },
-                },
-              },
-              {
-                user: {
-                  email: {
-                    contains: searchTerm,
-                    mode: "insensitive",
-                  },
-                },
-              },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      user: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+            },
+          ],
+        }
+      : {}),
+  };
 
-  const totalDoctors = await prisma.doctor.count();
+  const [
+    doctors,
+    totalFilteredDoctors,
+    totalDoctors,
+    pendingDoctors,
+    approvedDoctors,
+    rejectedDoctors,
+  ] = await Promise.all([
+    prisma.doctor.findMany({
+      where,
+      include: {
+        user: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: DOCTORS_PER_PAGE,
+    }),
+    prisma.doctor.count({
+      where,
+    }),
+    prisma.doctor.count(),
+    prisma.doctor.count({
+      where: {
+        approvalStatus: "PENDING",
+      },
+    }),
+    prisma.doctor.count({
+      where: {
+        approvalStatus: "APPROVED",
+      },
+    }),
+    prisma.doctor.count({
+      where: {
+        approvalStatus: "REJECTED",
+      },
+    }),
+  ]);
 
-  const pendingDoctors = await prisma.doctor.count({
-    where: {
-      approvalStatus: "PENDING",
-    },
-  });
+  const totalPages = Math.max(
+    Math.ceil(totalFilteredDoctors / DOCTORS_PER_PAGE),
+    1
+  );
 
-  const approvedDoctors = await prisma.doctor.count({
-    where: {
-      approvalStatus: "APPROVED",
-    },
-  });
-
-  const rejectedDoctors = await prisma.doctor.count({
-    where: {
-      approvalStatus: "REJECTED",
-    },
-  });
+  const hasPreviousPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
 
   return (
     <>
@@ -300,6 +342,29 @@ export default async function AdminMedicosPage({
               >
                 Reprovados ({rejectedDoctors})
               </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-500">Resultado filtrado</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {totalFilteredDoctors}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-500">Página atual</p>
+              <p className="mt-2 text-3xl font-bold text-green-700">
+                {currentPage}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-500">Total de páginas</p>
+              <p className="mt-2 text-3xl font-bold text-slate-700">
+                {totalPages}
+              </p>
             </div>
           </div>
 
@@ -442,6 +507,49 @@ export default async function AdminMedicosPage({
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-gray-500">
+              Exibindo {doctors.length} de {totalFilteredDoctors} médicos.
+              Página {currentPage} de {totalPages}.
+            </p>
+
+            <div className="flex gap-3">
+              {hasPreviousPage ? (
+                <Link
+                  href={getPaginationHref(
+                    currentPage - 1,
+                    statusFilter,
+                    searchTerm
+                  )}
+                  className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                >
+                  Página anterior
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-400">
+                  Página anterior
+                </span>
+              )}
+
+              {hasNextPage ? (
+                <Link
+                  href={getPaginationHref(
+                    currentPage + 1,
+                    statusFilter,
+                    searchTerm
+                  )}
+                  className="rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
+                >
+                  Próxima página
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-xl bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-400">
+                  Próxima página
+                </span>
+              )}
+            </div>
           </div>
         </section>
       </main>
