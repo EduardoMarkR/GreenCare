@@ -5,6 +5,14 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
 
+type AdminLogsPageProps = {
+  searchParams?: Promise<{
+    pagina?: string;
+  }>;
+};
+
+const LOGS_PER_PAGE = 20;
+
 function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
@@ -13,7 +21,9 @@ function formatDateTime(date: Date) {
   }).format(date);
 }
 
-export default async function AdminLogsPage() {
+export default async function AdminLogsPage({
+  searchParams,
+}: AdminLogsPageProps) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
@@ -23,15 +33,27 @@ export default async function AdminLogsPage() {
     redirect("/login");
   }
 
-  const logs = await prisma.auditLog.findMany({
-    include: {
-      user: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 100,
-  });
+  const params = await searchParams;
+  const currentPage = Math.max(Number(params?.pagina ?? "1"), 1);
+  const skip = (currentPage - 1) * LOGS_PER_PAGE;
+
+  const [totalLogs, logs] = await Promise.all([
+    prisma.auditLog.count(),
+    prisma.auditLog.findMany({
+      include: {
+        user: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: LOGS_PER_PAGE,
+    }),
+  ]);
+
+  const totalPages = Math.max(Math.ceil(totalLogs / LOGS_PER_PAGE), 1);
+  const hasPreviousPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
 
   return (
     <>
@@ -61,6 +83,29 @@ export default async function AdminLogsPage() {
             >
               Voltar ao Painel
             </Link>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-500">Total de logs</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {totalLogs}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-500">Página atual</p>
+              <p className="mt-2 text-3xl font-bold text-green-700">
+                {currentPage}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-sm text-gray-500">Total de páginas</p>
+              <p className="mt-2 text-3xl font-bold text-slate-700">
+                {totalPages}
+              </p>
+            </div>
           </div>
 
           <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
@@ -131,9 +176,40 @@ export default async function AdminLogsPage() {
               </table>
             </div>
 
-            <p className="mt-4 text-xs text-gray-500">
-              Exibindo os 100 registros mais recentes.
-            </p>
+            <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-500">
+                Exibindo {logs.length} de {totalLogs} registros. Página{" "}
+                {currentPage} de {totalPages}.
+              </p>
+
+              <div className="flex gap-3">
+                {hasPreviousPage ? (
+                  <Link
+                    href={`/dashboard/admin/logs?pagina=${currentPage - 1}`}
+                    className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                  >
+                    Página anterior
+                  </Link>
+                ) : (
+                  <span className="cursor-not-allowed rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-400">
+                    Página anterior
+                  </span>
+                )}
+
+                {hasNextPage ? (
+                  <Link
+                    href={`/dashboard/admin/logs?pagina=${currentPage + 1}`}
+                    className="rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
+                  >
+                    Próxima página
+                  </Link>
+                ) : (
+                  <span className="cursor-not-allowed rounded-xl bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-400">
+                    Próxima página
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </section>
       </main>
