@@ -14,6 +14,14 @@ function getApprovalStatusLabel(status: string) {
   return status;
 }
 
+function getSuccessParam(status: string) {
+  if (status === "APPROVED") return "medico-aprovado";
+  if (status === "REJECTED") return "medico-reprovado";
+  if (status === "PENDING") return "medico-pendente";
+
+  return "status-atualizado";
+}
+
 export async function updateDoctorApproval(formData: FormData) {
   const cookieStore = await cookies();
 
@@ -71,4 +79,6 @@ export async function updateDoctorApproval(formData: FormData) {
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/admin/medicos");
   revalidatePath("/medicos");
+
+  redirect(`/dashboard/admin/medicos?success=${getSuccessParam(approvalStatus)}`);
 }

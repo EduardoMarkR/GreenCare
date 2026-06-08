@@ -12,6 +12,7 @@ type AdminMedicosPageProps = {
   searchParams?: Promise<{
     status?: string;
     busca?: string;
+    success?: string;
   }>;
 };
 
@@ -70,6 +71,26 @@ function getFilterHref(status: string, searchTerm: string) {
     : "/dashboard/admin/medicos";
 }
 
+function getSuccessMessage(success?: string) {
+  if (success === "medico-aprovado") {
+    return "Médico aprovado com sucesso.";
+  }
+
+  if (success === "medico-reprovado") {
+    return "Médico reprovado com sucesso.";
+  }
+
+  if (success === "medico-pendente") {
+    return "Médico voltou para pendente com sucesso.";
+  }
+
+  if (success === "medico-excluido") {
+    return "Médico excluído com sucesso.";
+  }
+
+  return null;
+}
+
 export default async function AdminMedicosPage({
   searchParams,
 }: AdminMedicosPageProps) {
@@ -85,6 +106,7 @@ export default async function AdminMedicosPage({
   const params = await searchParams;
   const selectedStatus = params?.status ?? "ALL";
   const searchTerm = params?.busca?.trim() ?? "";
+  const successMessage = getSuccessMessage(params?.success);
 
   const validStatuses = ["ALL", "PENDING", "APPROVED", "REJECTED"];
   const statusFilter = validStatuses.includes(selectedStatus)
@@ -198,6 +220,12 @@ export default async function AdminMedicosPage({
               Voltar ao Painel
             </Link>
           </div>
+
+          {successMessage && (
+            <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-800 shadow-sm">
+              ✅ {successMessage}
+            </div>
+          )}
 
           <div className="mt-10 rounded-2xl bg-white p-5 shadow-sm">
             <p className="mb-4 text-sm font-semibold text-gray-700">
