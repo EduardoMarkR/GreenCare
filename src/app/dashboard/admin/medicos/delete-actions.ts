@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 export async function deleteDoctor(formData: FormData) {
   const cookieStore = await cookies();
@@ -26,6 +27,7 @@ export async function deleteDoctor(formData: FormData) {
       id: doctorId,
     },
     include: {
+      user: true,
       appointments: true,
       availabilities: true,
     },
@@ -34,6 +36,11 @@ export async function deleteDoctor(formData: FormData) {
   if (!doctor) {
     throw new Error("Médico não encontrado.");
   }
+
+  const doctorName = doctor.user.name;
+  const doctorEmail = doctor.user.email;
+  const appointmentsCount = doctor.appointments.length;
+  const availabilitiesCount = doctor.availabilities.length;
 
   await prisma.appointment.deleteMany({
     where: {
@@ -51,6 +58,14 @@ export async function deleteDoctor(formData: FormData) {
     where: {
       id: doctorId,
     },
+  });
+
+  await createAuditLog({
+    userId,
+    action: "DELETE_DOCTOR",
+    entity: "Doctor",
+    entityId: doctorId,
+    details: `Admin excluiu o médico ${doctorName} (${doctorEmail}). Consultas removidas: ${appointmentsCount}. Horários removidos: ${availabilitiesCount}.`,
   });
 
   revalidatePath("/dashboard/admin");
