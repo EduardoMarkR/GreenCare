@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
+import { updateUserRole } from "./actions";
 
 type AdminUsuariosPageProps = {
   searchParams?: Promise<{
@@ -109,7 +110,8 @@ export default async function AdminUsuariosPage({
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Visualize usuários cadastrados e seus papéis na plataforma.
+                Visualize usuários cadastrados e gerencie seus papéis na
+                plataforma.
               </p>
             </div>
 
@@ -232,13 +234,65 @@ export default async function AdminUsuariosPage({
                     </p>
                   </div>
 
-                  <span
-                    className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getRoleClass(
-                      user.role
-                    )}`}
-                  >
-                    {getRoleLabel(user.role)}
-                  </span>
+                  <div className="flex flex-col gap-3 lg:items-end">
+                    <span
+                      className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getRoleClass(
+                        user.role
+                      )}`}
+                    >
+                      {getRoleLabel(user.role)}
+                    </span>
+
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                      {user.role !== "ADMIN" && (
+                        <form action={updateUserRole}>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input type="hidden" name="role" value="ADMIN" />
+
+                          <button
+                            type="submit"
+                            className="rounded-full bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-800 transition hover:bg-purple-200"
+                          >
+                            Tornar admin
+                          </button>
+                        </form>
+                      )}
+
+                      {user.role !== "PATIENT" && user.id !== userId && (
+                        <form action={updateUserRole}>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input type="hidden" name="role" value="PATIENT" />
+
+                          <button
+                            type="submit"
+                            className="rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-200"
+                          >
+                            Tornar paciente
+                          </button>
+                        </form>
+                      )}
+
+                      {user.role !== "DOCTOR" && (
+                        <form action={updateUserRole}>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input type="hidden" name="role" value="DOCTOR" />
+
+                          <button
+                            type="submit"
+                            className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800 transition hover:bg-green-200"
+                          >
+                            Tornar médico
+                          </button>
+                        </form>
+                      )}
+                    </div>
+
+                    {user.id === userId && (
+                      <p className="text-xs text-gray-500">
+                        Você está logado com este usuário.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}

@@ -1,9 +1,11 @@
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
+import { deletePatient } from "./actions";
 
 type AdminPacientesPageProps = {
   searchParams?: Promise<{
@@ -94,7 +96,7 @@ export default async function AdminPacientesPage({
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Acompanhe pacientes cadastrados, consultas e documentos enviados.
+                Acompanhe, busque e exclua pacientes cadastrados.
               </p>
             </div>
 
@@ -220,6 +222,21 @@ export default async function AdminPacientesPage({
                     >
                       Ver detalhes
                     </Link>
+
+                    <form action={deletePatient}>
+                      <input
+                        type="hidden"
+                        name="patientId"
+                        value={patient.id}
+                      />
+
+                      <ConfirmSubmitButton
+                        message="Tem certeza que deseja excluir este paciente? Consultas e documentos vinculados também serão removidos."
+                        className="w-full rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-red-700"
+                      >
+                        Excluir paciente
+                      </ConfirmSubmitButton>
+                    </form>
                   </div>
                 </div>
               </article>

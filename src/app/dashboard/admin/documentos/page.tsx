@@ -1,9 +1,11 @@
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
+import { deleteDocument } from "./actions";
 
 type AdminDocumentosPageProps = {
   searchParams?: Promise<{
@@ -102,7 +104,7 @@ export default async function AdminDocumentosPage({
               </h1>
 
               <p className="mt-3 text-gray-600">
-                Visualize todos os documentos enviados pelos pacientes.
+                Visualize, busque e exclua documentos enviados pelos pacientes.
               </p>
             </div>
 
@@ -219,6 +221,21 @@ export default async function AdminDocumentosPage({
                     >
                       Ver paciente
                     </Link>
+
+                    <form action={deleteDocument}>
+                      <input
+                        type="hidden"
+                        name="documentId"
+                        value={document.id}
+                      />
+
+                      <ConfirmSubmitButton
+                        message="Tem certeza que deseja excluir este documento? Essa ação não pode ser desfeita."
+                        className="rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-red-700"
+                      >
+                        Excluir documento
+                      </ConfirmSubmitButton>
+                    </form>
                   </div>
                 </div>
               </article>

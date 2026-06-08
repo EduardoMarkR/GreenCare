@@ -1,3 +1,4 @@
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -5,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
 import { updateDoctorApproval } from "./actions";
+import { deleteDoctor } from "./delete-actions";
 
 type AdminMedicosPageProps = {
   searchParams?: Promise<{
@@ -320,6 +322,21 @@ export default async function AdminMedicosPage({
                     >
                       Ver detalhes
                     </Link>
+
+                    <form action={deleteDoctor}>
+                      <input
+                        type="hidden"
+                        name="doctorId"
+                        value={doctor.id}
+                      />
+
+                      <ConfirmSubmitButton
+                        message="Tem certeza que deseja excluir este médico? Horários e consultas vinculadas também serão removidos."
+                        className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                      >
+                        Excluir médico
+                      </ConfirmSubmitButton>
+                    </form>
 
                     <div className="flex flex-wrap gap-2 lg:justify-end">
                       {doctor.approvalStatus !== "APPROVED" && (

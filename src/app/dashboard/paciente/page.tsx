@@ -30,6 +30,14 @@ function getStatusClass(status: string) {
   return "bg-gray-100 text-gray-800";
 }
 
+function getDoctorStatusLabel(status: string) {
+  if (status === "PENDING") return "Em análise";
+  if (status === "APPROVED") return "Aprovado";
+  if (status === "REJECTED") return "Reprovado";
+
+  return status;
+}
+
 export default async function DashboardPacientePage() {
   const cookieStore = await cookies();
 
@@ -52,6 +60,12 @@ export default async function DashboardPacientePage() {
   if (!patient) {
     throw new Error("Paciente não encontrado.");
   }
+
+  const doctor = await prisma.doctor.findUnique({
+    where: {
+      userId,
+    },
+  });
 
   const totalConsultas = await prisma.appointment.count({
     where: {
@@ -119,6 +133,15 @@ export default async function DashboardPacientePage() {
                 Meu Perfil
               </Link>
 
+              {doctor?.approvalStatus === "APPROVED" && (
+                <Link
+                  href="/dashboard/medico"
+                  className="rounded-xl bg-emerald-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-emerald-700"
+                >
+                  Painel Médico
+                </Link>
+              )}
+
               <Link
                 href="/logout"
                 className="rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-red-700"
@@ -144,9 +167,7 @@ export default async function DashboardPacientePage() {
             </div>
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900">
-                Pendentes
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">Pendentes</h2>
 
               <p className="mt-4 text-4xl font-bold text-yellow-600">
                 {consultasPendentes}
@@ -158,18 +179,82 @@ export default async function DashboardPacientePage() {
             </div>
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900">
-                Confirmadas
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">Confirmadas</h2>
 
               <p className="mt-4 text-4xl font-bold text-green-700">
                 {consultasConfirmadas}
               </p>
 
-              <p className="mt-2 text-gray-600">
-                Consultas confirmadas.
-              </p>
+              <p className="mt-2 text-gray-600">Consultas confirmadas.</p>
             </div>
+          </div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            <Link
+              href="/dashboard/paciente/documentos"
+              className="block rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-green-300 hover:bg-green-50"
+            >
+              <h2 className="text-lg font-bold text-gray-900">
+                Meus documentos
+              </h2>
+
+              <p className="mt-2 text-gray-600">
+                Envie e acompanhe seus documentos médicos.
+              </p>
+            </Link>
+
+            {!doctor && (
+              <Link
+                href="/dashboard/paciente/solicitar-medico"
+                className="block rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm transition hover:bg-emerald-100"
+              >
+                <h2 className="text-lg font-bold text-emerald-900">
+                  Quero atender como médico
+                </h2>
+
+                <p className="mt-2 text-emerald-800">
+                  Possui CRM e deseja oferecer consultas pela plataforma?
+                  Envie sua candidatura para análise da administração.
+                </p>
+              </Link>
+            )}
+
+            {doctor && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-emerald-900">
+                  Cadastro médico
+                </h2>
+
+                <p className="mt-2 text-emerald-800">
+                  Status da sua candidatura:{" "}
+                  <strong>{getDoctorStatusLabel(doctor.approvalStatus)}</strong>
+                </p>
+
+                {doctor.approvalStatus === "APPROVED" && (
+                  <Link
+                    href="/dashboard/medico"
+                    className="mt-4 inline-flex rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
+                  >
+                    Acessar painel médico
+                  </Link>
+                )}
+
+                {doctor.approvalStatus === "PENDING" && (
+                  <p className="mt-4 text-sm text-emerald-700">
+                    Sua solicitação está aguardando análise da administração.
+                  </p>
+                )}
+
+                {doctor.approvalStatus === "REJECTED" && (
+                  <Link
+                    href="/dashboard/medico/perfil"
+                    className="mt-4 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-300 transition hover:bg-emerald-100"
+                  >
+                    Revisar perfil médico
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
@@ -194,9 +279,7 @@ export default async function DashboardPacientePage() {
 
             <div className="mt-6 space-y-4">
               {proximasConsultas.length === 0 && (
-                <p className="text-gray-600">
-                  Nenhuma consulta encontrada.
-                </p>
+                <p className="text-gray-600">Nenhuma consulta encontrada.</p>
               )}
 
               {proximasConsultas.map((appointment) => (
