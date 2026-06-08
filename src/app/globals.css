@@ -1,19 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Paleta CannaDoctor */
+
+  --background: #f7f4e7;
+  --foreground: #08553f;
+
+  --canna-primary: #08553f;
+  --canna-secondary: #00cf7b;
+  --canna-accent: #f3efa1;
+  --canna-light: #f7f4e7;
+  --canna-gray: #878787;
+  --canna-gray-light: #c6c6c6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+
+  --color-canna-primary: var(--canna-primary);
+  --color-canna-secondary: var(--canna-secondary);
+  --color-canna-accent: var(--canna-accent);
+  --color-canna-light: var(--canna-light);
+  --color-canna-gray: var(--canna-gray);
+  --color-canna-gray-light: var(--canna-gray-light);
+
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
 }
