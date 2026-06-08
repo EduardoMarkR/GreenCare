@@ -59,6 +59,7 @@ export default async function DashboardAdminPage() {
     cancelledAppointments,
     completedAppointments,
     totalDocuments,
+    totalAuditLogs,
     appointments,
     recentAppointments,
   ] = await Promise.all([
@@ -102,6 +103,7 @@ export default async function DashboardAdminPage() {
       },
     }),
     prisma.document.count(),
+    prisma.auditLog.count(),
     prisma.appointment.findMany({
       include: {
         doctor: true,
@@ -222,6 +224,13 @@ export default async function DashboardAdminPage() {
       color: "text-blue-700",
     },
     {
+      title: "Logs de auditoria",
+      value: totalAuditLogs,
+      icon: "📋",
+      href: "/dashboard/admin/logs",
+      color: "text-slate-700",
+    },
+    {
       title: "Receita prevista",
       value: formatCurrency(estimatedRevenue),
       icon: "💰",
@@ -278,6 +287,13 @@ export default async function DashboardAdminPage() {
                 className="rounded-xl border border-purple-600 px-5 py-3 text-center font-semibold text-purple-700 transition hover:bg-purple-50"
               >
                 Gestão de Usuários
+              </Link>
+
+              <Link
+                href="/dashboard/admin/logs"
+                className="rounded-xl border border-slate-600 px-5 py-3 text-center font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Logs de Auditoria
               </Link>
 
               <Link
@@ -464,14 +480,14 @@ export default async function DashboardAdminPage() {
               <p className="mt-4 text-green-50">
                 A plataforma já possui autenticação, dashboards, agendamentos,
                 controle de status, perfis, horários médicos, upload de
-                documentos e gestão administrativa completa.
+                documentos, gestão administrativa e logs de auditoria.
               </p>
 
               <div className="mt-6 rounded-2xl bg-white/10 p-4">
                 <p className="text-sm text-green-50">Próxima prioridade</p>
 
                 <p className="mt-1 text-xl font-bold">
-                  Permissões e ações avançadas
+                  Estabilização, paginação e UX
                 </p>
               </div>
 
@@ -482,6 +498,13 @@ export default async function DashboardAdminPage() {
                   {formatCurrency(estimatedRevenue)}
                 </p>
               </div>
+
+              <Link
+                href="/dashboard/admin/logs"
+                className="mt-6 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-green-700 transition hover:bg-green-50"
+              >
+                Ver logs de auditoria
+              </Link>
             </div>
           </div>
 
