@@ -1,3 +1,4 @@
+import SubmitButton from "@/components/SubmitButton";
 import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -382,12 +383,12 @@ export default async function AdminMedicosPage({
                             value="APPROVED"
                           />
 
-                          <button
-                            type="submit"
-                            className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800 transition hover:bg-green-200"
+                          <SubmitButton
+                            loadingText="Aprovando..."
+                            className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800 transition hover:bg-green-200 disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             Aprovar
-                          </button>
+                          </SubmitButton>
                         </form>
                       )}
 
@@ -405,12 +406,12 @@ export default async function AdminMedicosPage({
                             value="REJECTED"
                           />
 
-                          <button
-                            type="submit"
-                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-200"
+                          <SubmitButton
+                            loadingText="Reprovando..."
+                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             Reprovar
-                          </button>
+                          </SubmitButton>
                         </form>
                       )}
 
@@ -428,12 +429,12 @@ export default async function AdminMedicosPage({
                             value="PENDING"
                           />
 
-                          <button
-                            type="submit"
-                            className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-semibold text-yellow-800 transition hover:bg-yellow-200"
+                          <SubmitButton
+                            loadingText="Atualizando..."
+                            className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-semibold text-yellow-800 transition hover:bg-yellow-200 disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             Voltar para pendente
-                          </button>
+                          </SubmitButton>
                         </form>
                       )}
                     </div>
