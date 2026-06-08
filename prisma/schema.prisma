@@ -37,6 +37,7 @@ model User {
 
   doctor  Doctor?
   patient Patient?
+  auditLogs AuditLog[]
 }
 
 model Patient {
@@ -106,4 +107,16 @@ model Document {
   createdAt DateTime @default(now())
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

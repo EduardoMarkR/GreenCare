@@ -4,6 +4,15 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
+
+function getApprovalStatusLabel(status: string) {
+  if (status === "PENDING") return "pendente";
+  if (status === "APPROVED") return "aprovado";
+  if (status === "REJECTED") return "reprovado";
+
+  return status;
+}
 
 export async function updateDoctorApproval(formData: FormData) {
   const cookieStore = await cookies();
@@ -26,6 +35,19 @@ export async function updateDoctorApproval(formData: FormData) {
     throw new Error("Status inválido.");
   }
 
+  const doctorBeforeUpdate = await prisma.doctor.findUnique({
+    where: {
+      id: doctorId,
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (!doctorBeforeUpdate) {
+    throw new Error("Médico não encontrado.");
+  }
+
   await prisma.doctor.update({
     where: {
       id: doctorId,
@@ -34,6 +56,16 @@ export async function updateDoctorApproval(formData: FormData) {
       approvalStatus: approvalStatus as "PENDING" | "APPROVED" | "REJECTED",
       approved: approvalStatus === "APPROVED",
     },
+  });
+
+  await createAuditLog({
+    userId,
+    action: "UPDATE_DOCTOR_APPROVAL",
+    entity: "Doctor",
+    entityId: doctorId,
+    details: `Admin alterou status do médico ${doctorBeforeUpdate.user.name} (${doctorBeforeUpdate.user.email}) de ${getApprovalStatusLabel(
+      doctorBeforeUpdate.approvalStatus
+    )} para ${getApprovalStatusLabel(approvalStatus)}.`,
   });
 
   revalidatePath("/dashboard/admin");
