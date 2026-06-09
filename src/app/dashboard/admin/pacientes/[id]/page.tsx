@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 
 type AdminPacienteDetalhePageProps = {
@@ -29,10 +29,10 @@ function getStatusLabel(status: string) {
 }
 
 function getStatusClass(status: string) {
-  if (status === "PENDING") return "bg-yellow-100 text-yellow-800";
-  if (status === "CONFIRMED") return "bg-green-100 text-green-800";
-  if (status === "CANCELLED") return "bg-red-100 text-red-800";
-  if (status === "COMPLETED") return "bg-blue-100 text-blue-800";
+  if (status === "PENDING") return "bg-[#F3EFA1] text-[#08553F]";
+  if (status === "CONFIRMED") return "bg-[#00CF7B]/15 text-[#08553F]";
+  if (status === "CANCELLED") return "bg-red-100 text-red-700";
+  if (status === "COMPLETED") return "bg-blue-100 text-blue-700";
 
   return "bg-gray-100 text-gray-800";
 }
@@ -85,116 +85,126 @@ export default async function AdminPacienteDetalhePage({
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-green-700">
-                Área administrativa
-              </p>
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <CannaPageHero
+          badge="Detalhes do paciente"
+          title={patient.user.name}
+          description="Visualização completa do paciente, documentos enviados e histórico de consultas."
+          backHref="/dashboard/admin/pacientes"
+          backLabel="Voltar para pacientes"
+        />
 
-              <h1 className="mt-2 text-4xl font-bold text-gray-900">
-                {patient.user.name}
-              </h1>
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm lg:col-span-1">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <p className="mt-3 text-gray-600">
-                Visualização completa do paciente, documentos e histórico de
-                consultas.
-              </p>
+              <div className="p-6">
+                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F3EFA1] text-3xl">
+                  🧑
+                </div>
+
+                <h2 className="mt-6 text-2xl font-extrabold text-[#08553F]">
+                  Dados do paciente
+                </h2>
+
+                <div className="mt-6 space-y-3 text-sm text-[#878787]">
+                  <p>
+                    <strong className="text-[#08553F]">Nome:</strong>{" "}
+                    {patient.user.name}
+                  </p>
+
+                  <p>
+                    <strong className="text-[#08553F]">E-mail:</strong>{" "}
+                    {patient.user.email}
+                  </p>
+
+                  <p>
+                    <strong className="text-[#08553F]">Telefone:</strong>{" "}
+                    {patient.phone || "Não informado"}
+                  </p>
+
+                  <p>
+                    <strong className="text-[#08553F]">
+                      Data de nascimento:
+                    </strong>{" "}
+                    {formatDate(patient.birthDate)}
+                  </p>
+
+                  <p>
+                    <strong className="text-[#08553F]">Cadastrado em:</strong>{" "}
+                    {formatDate(patient.createdAt)}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <Link
-              href="/dashboard/admin/pacientes"
-              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-            >
-              Voltar para pacientes
-            </Link>
-          </div>
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            <div className="rounded-3xl bg-white p-6 shadow-md">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Dados do paciente
-              </h2>
-
-              <div className="mt-6 space-y-3 text-sm text-gray-700">
-                <p>
-                  <strong>Nome:</strong> {patient.user.name}
+              <div className="p-6">
+                <p className="text-sm font-bold text-[#878787]">
+                  Consultas vinculadas
                 </p>
 
-                <p>
-                  <strong>E-mail:</strong> {patient.user.email}
+                <p className="mt-4 text-5xl font-extrabold text-[#08553F]">
+                  {patient.appointments.length}
                 </p>
 
-                <p>
-                  <strong>Telefone:</strong>{" "}
-                  {patient.phone || "Não informado"}
-                </p>
-
-                <p>
-                  <strong>Data de nascimento:</strong>{" "}
-                  {formatDate(patient.birthDate)}
-                </p>
-
-                <p>
-                  <strong>Cadastrado em:</strong>{" "}
-                  {formatDate(patient.createdAt)}
+                <p className="mt-3 text-sm text-[#878787]">
+                  Total de consultas vinculadas a este paciente.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-md">
-              <h2 className="text-2xl font-bold text-gray-900">Consultas</h2>
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <p className="mt-6 text-4xl font-bold text-green-700">
-                {patient.appointments.length}
-              </p>
+              <div className="p-6">
+                <p className="text-sm font-bold text-[#878787]">
+                  Documentos enviados
+                </p>
 
-              <p className="mt-2 text-gray-600">
-                Total de consultas vinculadas a este paciente.
-              </p>
-            </div>
+                <p className="mt-4 text-5xl font-extrabold text-[#08553F]">
+                  {patient.documents.length}
+                </p>
 
-            <div className="rounded-3xl bg-white p-6 shadow-md">
-              <h2 className="text-2xl font-bold text-gray-900">Documentos</h2>
-
-              <p className="mt-6 text-4xl font-bold text-blue-700">
-                {patient.documents.length}
-              </p>
-
-              <p className="mt-2 text-gray-600">
-                Total de documentos enviados pelo paciente.
-              </p>
+                <p className="mt-3 text-sm text-[#878787]">
+                  Total de documentos enviados pelo paciente.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-10 rounded-3xl bg-white p-6 shadow-md">
-            <h2 className="text-2xl font-bold text-gray-900">
+          <div className="mt-10 rounded-[2rem] bg-white p-8 shadow-sm">
+            <h2 className="text-2xl font-extrabold text-[#08553F]">
               Documentos enviados
             </h2>
 
             <div className="mt-6 grid gap-4">
               {patient.documents.length === 0 && (
-                <p className="text-gray-600">
-                  Nenhum documento enviado por este paciente.
-                </p>
+                <div className="rounded-2xl bg-[#F7F4E7] p-5">
+                  <p className="font-bold text-[#08553F]">
+                    Nenhum documento enviado por este paciente.
+                  </p>
+                </div>
               )}
 
               {patient.documents.map((document) => (
                 <div
                   key={document.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-gray-200 p-4 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-3 rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-extrabold text-[#08553F]">
                       📎 {document.name}
                     </p>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-[#878787]">
                       Enviado em: {formatDate(document.createdAt)}
                     </p>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-[#878787]">
                       Tipo: {document.fileType || "Não informado"}
                     </p>
                   </div>
@@ -203,7 +213,7 @@ export default async function AdminPacienteDetalhePage({
                     href={document.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-xl bg-blue-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-blue-700"
+                    className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
                   >
                     Abrir documento
                   </a>
@@ -212,41 +222,43 @@ export default async function AdminPacienteDetalhePage({
             </div>
           </div>
 
-          <div className="mt-10 rounded-3xl bg-white p-6 shadow-md">
-            <h2 className="text-2xl font-bold text-gray-900">
+          <div className="mt-10 rounded-[2rem] bg-white p-8 shadow-sm">
+            <h2 className="text-2xl font-extrabold text-[#08553F]">
               Histórico de consultas
             </h2>
 
             <div className="mt-6 grid gap-4">
               {patient.appointments.length === 0 && (
-                <p className="text-gray-600">
-                  Nenhuma consulta encontrada para este paciente.
-                </p>
+                <div className="rounded-2xl bg-[#F7F4E7] p-5">
+                  <p className="font-bold text-[#08553F]">
+                    Nenhuma consulta encontrada para este paciente.
+                  </p>
+                </div>
               )}
 
               {patient.appointments.map((appointment) => (
                 <div
                   key={appointment.id}
-                  className="rounded-2xl border border-gray-200 p-4"
+                  className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-extrabold text-[#08553F]">
                         Dr(a). {appointment.doctor.user.name}
                       </p>
 
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="mt-1 text-sm font-semibold text-[#08553F]">
                         Data: {formatDate(appointment.date)}
                       </p>
 
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="mt-1 text-sm text-[#878787]">
                         Observações:{" "}
                         {appointment.notes || "Nenhuma observação"}
                       </p>
                     </div>
 
                     <span
-                      className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getStatusClass(
+                      className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
                         appointment.status
                       )}`}
                     >

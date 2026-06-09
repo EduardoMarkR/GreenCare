@@ -1,3 +1,4 @@
+import CannaPageHero from "@/components/CannaPageHero";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -44,27 +45,14 @@ export default async function DocumentosPacientePage() {
       <Navbar />
 
       <main className="min-h-screen bg-[#F7F4E7]">
-        <section className="relative overflow-hidden border-b border-[#C6C6C6]/60 bg-gradient-to-br from-[#F7F4E7] via-white to-[#F3EFA1]/60">
-          <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#00CF7B]/20 blur-3xl" />
-
-          <div className="relative mx-auto max-w-7xl px-6 py-14">
-            <Link
-              href="/dashboard/paciente"
-              className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              ← Voltar ao painel
-            </Link>
-
-            <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-[#08553F] md:text-5xl">
-              Meus documentos
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-[#878787]">
-              Envie exames, laudos, receitas e documentos médicos para manter
-              sua jornada de cuidado organizada em um só lugar.
-            </p>
-          </div>
-        </section>
+       
+        <CannaPageHero
+          badge="Documentos médicos"
+          title="Meus documentos"
+          description="Envie exames, laudos, receitas e documentos médicos para manter sua jornada de cuidado organizada em um só lugar."
+          backHref="/dashboard/paciente"
+          backLabel="Voltar ao painel"
+        />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid gap-8 lg:grid-cols-[420px_1fr]">

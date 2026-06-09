@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { updateDoctorProfile } from "./actions";
 
@@ -33,140 +34,174 @@ export default async function PerfilMedicoPage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-3xl px-6 py-16">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
-            <Link
-              href="/dashboard/medico"
-              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-            >
-              Voltar ao Painel
-            </Link>
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <CannaPageHero
+          badge="Perfil profissional"
+          title="Perfil médico"
+          description="Atualize seus dados profissionais exibidos para pacientes, incluindo CRM, especialidade, bio e valor da consulta."
+          backHref="/dashboard/medico"
+          backLabel="Voltar ao painel"
+        />
 
-            <Link
-              href="/medico/horarios"
-              className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
-            >
-              Minha Agenda
-            </Link>
-          </div>
+        <section className="mx-auto max-w-6xl px-6 py-12">
+          <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-[#C6C6C6]/60">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-          <div className="rounded-3xl bg-white p-8 shadow-md">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Perfil Médico
-            </h1>
+              <div className="p-8">
+                <h2 className="text-3xl font-extrabold text-[#08553F]">
+                  Dados profissionais
+                </h2>
 
-            <p className="mt-2 text-gray-600">
-              Atualize seus dados profissionais exibidos para os pacientes.
-            </p>
+                <p className="mt-2 text-[#878787]">
+                  Essas informações ajudam pacientes a entenderem sua atuação,
+                  especialidade e modelo de atendimento.
+                </p>
 
-            <form action={updateDoctorProfile} className="mt-8 space-y-6">
-              <div>
-                <label className="mb-2 block font-medium text-gray-700">
-                  Nome
-                </label>
+                <form action={updateDoctorProfile} className="mt-8 space-y-6">
+                  <div>
+                    <label className="mb-2 block font-bold text-[#08553F]">
+                      Nome
+                    </label>
 
-                <input
-                  type="text"
-                  name="name"
-                  defaultValue={doctor.user.name}
-                  required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
-                />
-              </div>
+                    <input
+                      type="text"
+                      name="name"
+                      defaultValue={doctor.user.name}
+                      required
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                    />
+                  </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block font-medium text-gray-700">
-                    CRM
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block font-bold text-[#08553F]">
+                        CRM
+                      </label>
+
+                      <input
+                        type="text"
+                        name="crm"
+                        defaultValue={doctor.crm}
+                        required
+                        className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block font-bold text-[#08553F]">
+                        UF do CRM
+                      </label>
+
+                      <input
+                        type="text"
+                        name="crmUf"
+                        defaultValue={doctor.crmUf}
+                        required
+                        maxLength={2}
+                        className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 uppercase text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block font-bold text-[#08553F]">
+                      Especialidade
+                    </label>
+
+                    <input
+                      type="text"
+                      name="specialty"
+                      defaultValue={doctor.specialty}
+                      required
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block font-bold text-[#08553F]">
+                      Bio
+                    </label>
+
+                    <textarea
+                      name="bio"
+                      defaultValue={doctor.bio ?? ""}
+                      rows={5}
+                      placeholder="Conte um pouco sobre sua formação, experiência e forma de atendimento."
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block font-bold text-[#08553F]">
+                      Valor da consulta
+                    </label>
+
+                    <input
+                      type="number"
+                      name="price"
+                      defaultValue={Number(doctor.price)}
+                      required
+                      min={0}
+                      step="0.01"
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-3 rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] p-4 text-sm font-bold text-[#08553F]">
+                    <input
+                      type="checkbox"
+                      name="telemedicine"
+                      defaultChecked={doctor.telemedicine}
+                      className="h-5 w-5 accent-[#08553F]"
+                    />
+
+                    Atendimento por telemedicina
                   </label>
 
-                  <input
-                    type="text"
-                    name="crm"
-                    defaultValue={doctor.crm}
-                    required
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
-                  />
-                </div>
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                  >
+                    Salvar alterações
+                  </button>
+                </form>
+              </div>
+            </div>
 
-                <div>
-                  <label className="mb-2 block font-medium text-gray-700">
-                    UF do CRM
-                  </label>
-
-                  <input
-                    type="text"
-                    name="crmUf"
-                    defaultValue={doctor.crmUf}
-                    required
-                    maxLength={2}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 uppercase text-gray-900"
-                  />
-                </div>
+            <aside className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-7 shadow-sm">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F3EFA1] text-3xl">
+                🩺
               </div>
 
-              <div>
-                <label className="mb-2 block font-medium text-gray-700">
-                  Especialidade
-                </label>
+              <h3 className="mt-6 text-2xl font-extrabold text-[#08553F]">
+                Perfil público
+              </h3>
 
-                <input
-                  type="text"
-                  name="specialty"
-                  defaultValue={doctor.specialty}
-                  required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
-                />
+              <p className="mt-3 text-sm leading-6 text-[#878787]">
+                Seu perfil profissional é a principal vitrine para pacientes.
+                Mantenha especialidade, bio e valor sempre atualizados.
+              </p>
+
+              <div className="mt-6 rounded-3xl bg-[#F7F4E7] p-5">
+                <p className="text-sm font-bold text-[#08553F]">
+                  Status de atendimento
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-[#878787]">
+                  {doctor.telemedicine
+                    ? "Você informou que atende por telemedicina."
+                    : "Você ainda não marcou atendimento por telemedicina."}
+                </p>
               </div>
 
-              <div>
-                <label className="mb-2 block font-medium text-gray-700">
-                  Bio
-                </label>
-
-                <textarea
-                  name="bio"
-                  defaultValue={doctor.bio ?? ""}
-                  rows={5}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block font-medium text-gray-700">
-                  Valor da consulta
-                </label>
-
-                <input
-                  type="number"
-                  name="price"
-                  defaultValue={Number(doctor.price)}
-                  required
-                  min={0}
-                  step="0.01"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
-                />
-              </div>
-
-              <label className="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-gray-700">
-                <input
-                  type="checkbox"
-                  name="telemedicine"
-                  defaultChecked={doctor.telemedicine}
-                  className="h-5 w-5"
-                />
-
-                Atendimento por telemedicina
-              </label>
-
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700"
+              <Link
+                href="/medico/horarios"
+                className="mt-6 inline-flex w-full justify-center rounded-2xl bg-[#00CF7B] px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
               >
-                Salvar alterações
-              </button>
-            </form>
+                Minha agenda
+              </Link>
+            </aside>
           </div>
         </section>
       </main>

@@ -1,4 +1,5 @@
 import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
+import CannaPageHero from "@/components/CannaPageHero";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -91,47 +92,76 @@ export default async function AdminDocumentosPage({
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-green-700">
-                Área administrativa
-              </p>
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <CannaPageHero
+          badge="Administração"
+          title="Gestão de documentos"
+          description="Visualize, busque e gerencie documentos enviados pelos pacientes."
+          backHref="/dashboard/admin"
+          backLabel="Voltar ao painel"
+        />
 
-              <h1 className="mt-2 text-4xl font-bold text-gray-900">
-                Gestão de Documentos
-              </h1>
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <p className="mt-3 text-gray-600">
-                Visualize, busque e exclua documentos enviados pelos pacientes.
-              </p>
+              <div className="p-6">
+                <p className="text-sm font-bold text-[#878787]">
+                  Documentos enviados
+                </p>
+
+                <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                  {totalDocuments}
+                </p>
+              </div>
             </div>
 
-            <Link
-              href="/dashboard/admin"
-              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-            >
-              Voltar ao Painel
-            </Link>
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
+
+              <div className="p-6">
+                <p className="text-sm font-bold text-[#878787]">
+                  Resultado atual
+                </p>
+
+                <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                  {documents.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
+
+              <div className="p-6">
+                <p className="text-sm font-bold text-[#878787]">
+                  Filtro aplicado
+                </p>
+
+                <p className="mt-2 text-lg font-extrabold text-[#08553F]">
+                  {searchTerm || "Nenhum"}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-10 rounded-2xl bg-white p-5 shadow-sm">
+          <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm font-semibold text-gray-700">
+                <p className="text-sm font-bold text-[#08553F]">
                   Buscar documento
                 </p>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  Total de documentos enviados: {totalDocuments}
+                <p className="mt-1 text-sm text-[#878787]">
+                  Pesquise por nome do documento, tipo, paciente ou e-mail.
                 </p>
               </div>
 
               {searchTerm && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[#878787]">
                   Resultado para:{" "}
-                  <span className="font-semibold text-gray-800">
+                  <span className="font-bold text-[#08553F]">
                     {searchTerm}
                   </span>
                 </p>
@@ -140,19 +170,19 @@ export default async function AdminDocumentosPage({
 
             <form
               action="/dashboard/admin/documentos"
-              className="mt-4 flex flex-col gap-3 md:flex-row"
+              className="mt-5 flex flex-col gap-3 md:flex-row"
             >
               <input
                 type="text"
                 name="busca"
                 defaultValue={searchTerm}
                 placeholder="Buscar por documento, tipo, paciente ou e-mail"
-                className="min-h-12 flex-1 rounded-xl border border-gray-300 px-4 text-gray-900 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                className="min-h-12 flex-1 rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
               />
 
               <button
                 type="submit"
-                className="rounded-xl bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+                className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
               >
                 Buscar
               </button>
@@ -160,7 +190,7 @@ export default async function AdminDocumentosPage({
               {searchTerm && (
                 <Link
                   href="/dashboard/admin/documentos"
-                  className="rounded-xl border border-gray-300 px-6 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-6 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
                 >
                   Limpar
                 </Link>
@@ -168,10 +198,10 @@ export default async function AdminDocumentosPage({
             </form>
           </div>
 
-          <div className="mt-10 grid gap-4">
+          <div className="mt-10 grid gap-5">
             {documents.length === 0 && (
-              <div className="rounded-2xl bg-white p-6 shadow">
-                <p className="text-gray-600">
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+                <p className="font-bold text-[#08553F]">
                   Nenhum documento encontrado para os critérios informados.
                 </p>
               </div>
@@ -180,62 +210,74 @@ export default async function AdminDocumentosPage({
             {documents.map((document) => (
               <article
                 key={document.id}
-                className="rounded-2xl bg-white p-6 shadow-sm"
+                className="overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm"
               >
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      📎 {document.name}
-                    </h2>
+                <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-                    <p className="mt-2 text-sm text-gray-600">
-                      Paciente: {document.patient.user.name}
-                    </p>
+                <div className="p-6">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <h2 className="text-2xl font-extrabold text-[#08553F]">
+                        📎 {document.name}
+                      </h2>
 
-                    <p className="mt-1 text-sm text-gray-600">
-                      E-mail: {document.patient.user.email}
-                    </p>
+                      <div className="mt-5 grid gap-2 text-sm text-[#878787] sm:grid-cols-2">
+                        <p>
+                          <strong className="text-[#08553F]">Paciente:</strong>{" "}
+                          {document.patient.user.name}
+                        </p>
 
-                    <p className="mt-1 text-sm text-gray-600">
-                      Tipo: {document.fileType || "Não informado"}
-                    </p>
+                        <p>
+                          <strong className="text-[#08553F]">E-mail:</strong>{" "}
+                          {document.patient.user.email}
+                        </p>
 
-                    <p className="mt-1 text-sm text-gray-600">
-                      Enviado em: {formatDate(document.createdAt)}
-                    </p>
-                  </div>
+                        <p>
+                          <strong className="text-[#08553F]">Tipo:</strong>{" "}
+                          {document.fileType || "Não informado"}
+                        </p>
 
-                  <div className="flex flex-col gap-3 lg:items-end">
-                    <a
-                      href={document.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-xl bg-blue-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-blue-700"
-                    >
-                      Abrir documento
-                    </a>
+                        <p>
+                          <strong className="text-[#08553F]">
+                            Enviado em:
+                          </strong>{" "}
+                          {formatDate(document.createdAt)}
+                        </p>
+                      </div>
+                    </div>
 
-                    <Link
-                      href={`/dashboard/admin/pacientes/${document.patient.id}`}
-                      className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-                    >
-                      Ver paciente
-                    </Link>
-
-                    <form action={deleteDocument}>
-                      <input
-                        type="hidden"
-                        name="documentId"
-                        value={document.id}
-                      />
-
-                      <ConfirmSubmitButton
-                        message="Tem certeza que deseja excluir este documento? Essa ação não pode ser desfeita."
-                        className="rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-red-700"
+                    <div className="flex flex-col gap-3 lg:items-end">
+                      <a
+                        href={document.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
                       >
-                        Excluir documento
-                      </ConfirmSubmitButton>
-                    </form>
+                        Abrir documento
+                      </a>
+
+                      <Link
+                        href={`/dashboard/admin/pacientes/${document.patient.id}`}
+                        className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                      >
+                        Ver paciente
+                      </Link>
+
+                      <form action={deleteDocument}>
+                        <input
+                          type="hidden"
+                          name="documentId"
+                          value={document.id}
+                        />
+
+                        <ConfirmSubmitButton
+                          message="Tem certeza que deseja excluir este documento? Essa ação não pode ser desfeita."
+                          className="rounded-2xl bg-red-600 px-5 py-3 text-center font-bold text-white transition hover:bg-red-700"
+                        >
+                          Excluir documento
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
                   </div>
                 </div>
               </article>

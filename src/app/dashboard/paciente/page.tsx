@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { cancelPatientAppointment } from "./actions";
 
@@ -49,12 +50,8 @@ export default async function DashboardPacientePage() {
   }
 
   const patient = await prisma.patient.findUnique({
-    where: {
-      userId,
-    },
-    include: {
-      user: true,
-    },
+    where: { userId },
+    include: { user: true },
   });
 
   if (!patient) {
@@ -62,15 +59,11 @@ export default async function DashboardPacientePage() {
   }
 
   const doctor = await prisma.doctor.findUnique({
-    where: {
-      userId,
-    },
+    where: { userId },
   });
 
   const totalConsultas = await prisma.appointment.count({
-    where: {
-      patientId: patient.id,
-    },
+    where: { patientId: patient.id },
   });
 
   const consultasPendentes = await prisma.appointment.count({
@@ -88,9 +81,7 @@ export default async function DashboardPacientePage() {
   });
 
   const proximasConsultas = await prisma.appointment.findMany({
-    where: {
-      patientId: patient.id,
-    },
+    where: { patientId: patient.id },
     include: {
       doctor: {
         include: {
@@ -109,55 +100,38 @@ export default async function DashboardPacientePage() {
       <Navbar />
 
       <main className="min-h-screen bg-[#F7F4E7]">
-        <section className="relative overflow-hidden border-b border-[#C6C6C6]/60 bg-gradient-to-br from-[#F7F4E7] via-white to-[#F3EFA1]/60">
-          <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#00CF7B]/20 blur-3xl" />
-
-          <div className="relative mx-auto max-w-7xl px-6 py-16">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <span className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm">
-                  Área do paciente
-                </span>
-
-                <h1 className="mt-6 max-w-3xl text-5xl font-extrabold tracking-tight text-[#08553F] md:text-6xl">
-                  Olá, {patient.user.name}
-                </h1>
-
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-[#878787]">
-                  Acompanhe suas consultas, documentos e solicitações em uma
-                  jornada de cuidado mais simples, segura e organizada.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
-                <Link
-                  href="/dashboard/paciente/perfil"
-                  className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-                >
-                  Meu perfil
-                </Link>
-
-                {doctor?.approvalStatus === "APPROVED" && (
-                  <Link
-                    href="/dashboard/medico"
-                    className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-                  >
-                    Painel médico
-                  </Link>
-                )}
-
-                <Link
-                  href="/logout"
-                  className="rounded-2xl bg-red-600 px-5 py-3 text-center font-bold text-white transition hover:bg-red-700"
-                >
-                  Sair
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        <CannaPageHero
+          badge="Área do paciente"
+          title={`Olá, ${patient.user.name}`}
+          description="Acompanhe suas consultas, documentos e solicitações em uma jornada de cuidado mais simples, segura e organizada."
+        />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link
+              href="/dashboard/paciente/perfil"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Meu perfil
+            </Link>
+
+            {doctor?.approvalStatus === "APPROVED" && (
+              <Link
+                href="/dashboard/medico"
+                className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+              >
+                Painel médico
+              </Link>
+            )}
+
+            <Link
+              href="/logout"
+              className="rounded-2xl bg-red-600 px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-red-700"
+            >
+              Sair
+            </Link>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-3">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { deleteAvailability } from "./actions";
 
@@ -50,41 +51,42 @@ export default async function HorariosPage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900">
-                Meus Horários
-              </h1>
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <CannaPageHero
+          badge="Agenda médica"
+          title="Meus horários"
+          description="Gerencie sua disponibilidade para consultas e mantenha sua agenda sempre organizada para pacientes."
+          backHref="/dashboard/medico"
+          backLabel="Voltar ao painel"
+        />
 
-              <p className="mt-3 text-gray-600">
-                Gerencie sua disponibilidade para consultas.
-              </p>
-            </div>
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link
+              href="/medico/horarios/novo"
+              className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+            >
+              Novo horário
+            </Link>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/dashboard/medico"
-                className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-              >
-                Voltar ao Painel
-              </Link>
-
-              <Link
-                href="/medico/horarios/novo"
-                className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
-              >
-                Novo Horário
-              </Link>
-            </div>
+            <Link
+              href="/medico/consultas"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Minhas consultas
+            </Link>
           </div>
 
-          <div className="mt-10 grid gap-4">
+          <div className="grid gap-4">
             {availabilities.length === 0 && (
-              <div className="rounded-2xl bg-white p-6 shadow">
-                <p className="text-gray-600">
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+                <p className="font-bold text-[#08553F]">
                   Você ainda não cadastrou nenhum horário.
+                </p>
+
+                <p className="mt-2 text-sm text-[#878787]">
+                  Crie seu primeiro horário para que pacientes possam agendar
+                  consultas.
                 </p>
               </div>
             )}
@@ -92,31 +94,31 @@ export default async function HorariosPage() {
             {availabilities.map((availability) => (
               <article
                 key={availability.id}
-                className="rounded-2xl bg-white p-5 shadow"
+                className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:border-[#00CF7B]"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-extrabold text-[#08553F]">
                       Horário disponível
                     </p>
 
-                    <p className="text-gray-600">
+                    <p className="mt-1 text-sm text-[#878787]">
                       {formatDate(availability.date)}
                     </p>
 
-                    <p className="text-green-700">
+                    <p className="mt-2 text-sm font-bold text-[#08553F]">
                       {availability.startTime} às {availability.endTime}
                     </p>
                   </div>
 
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-800">
+                    <span className="w-fit rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
                       Disponível
                     </span>
 
                     <Link
                       href={`/medico/horarios/${availability.id}/editar`}
-                      className="rounded-full bg-blue-100 px-4 py-2 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
+                      className="rounded-full bg-blue-100 px-4 py-2 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-200"
                     >
                       Editar
                     </Link>
@@ -130,7 +132,7 @@ export default async function HorariosPage() {
 
                       <button
                         type="submit"
-                        className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-200"
+                        className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
                       >
                         Excluir horário
                       </button>

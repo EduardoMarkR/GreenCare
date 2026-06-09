@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 
 type AdminLogsPageProps = {
@@ -59,155 +60,176 @@ export default async function AdminLogsPage({
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-green-700">
-                Área administrativa
-              </p>
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <CannaPageHero
+          badge="Administração"
+          title="Logs de auditoria"
+          description="Acompanhe as principais ações administrativas realizadas na plataforma."
+          backHref="/dashboard/admin"
+          backLabel="Voltar ao painel"
+        />
 
-              <h1 className="mt-2 text-4xl font-bold text-gray-900">
-                Logs de Auditoria
-              </h1>
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <p className="mt-3 text-gray-600">
-                Acompanhe as principais ações administrativas realizadas na
-                plataforma.
-              </p>
+              <div className="p-5">
+                <p className="text-sm font-bold text-[#878787]">
+                  Total de logs
+                </p>
+
+                <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                  {totalLogs}
+                </p>
+              </div>
             </div>
 
-            <Link
-              href="/dashboard/admin"
-              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-            >
-              Voltar ao Painel
-            </Link>
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
+
+              <div className="p-5">
+                <p className="text-sm font-bold text-[#878787]">
+                  Página atual
+                </p>
+
+                <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                  {currentPage}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
+
+              <div className="p-5">
+                <p className="text-sm font-bold text-[#878787]">
+                  Total de páginas
+                </p>
+
+                <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                  {totalPages}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-sm text-gray-500">Total de logs</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900">
-                {totalLogs}
-              </p>
-            </div>
+          <div className="mt-10 overflow-hidden rounded-[2rem] bg-white shadow-sm">
+            <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-sm text-gray-500">Página atual</p>
-              <p className="mt-2 text-3xl font-bold text-green-700">
-                {currentPage}
-              </p>
-            </div>
+            <div className="p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-extrabold text-[#08553F]">
+                  Histórico de ações
+                </h2>
 
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-sm text-gray-500">Total de páginas</p>
-              <p className="mt-2 text-3xl font-bold text-slate-700">
-                {totalPages}
-              </p>
-            </div>
-          </div>
+                <p className="mt-2 text-sm text-[#878787]">
+                  Registros administrativos ordenados do mais recente para o
+                  mais antigo.
+                </p>
+              </div>
 
-          <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-gray-200 text-sm text-gray-500">
-                    <th className="py-3 pr-4 font-semibold">Data</th>
-                    <th className="py-3 pr-4 font-semibold">Admin</th>
-                    <th className="py-3 pr-4 font-semibold">Ação</th>
-                    <th className="py-3 pr-4 font-semibold">Entidade</th>
-                    <th className="py-3 pr-4 font-semibold">Detalhes</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {logs.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="py-6 text-center text-gray-500"
-                      >
-                        Nenhum log encontrado.
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-[#C6C6C6]/60 text-sm text-[#878787]">
+                      <th className="py-3 pr-4 font-bold">Data</th>
+                      <th className="py-3 pr-4 font-bold">Admin</th>
+                      <th className="py-3 pr-4 font-bold">Ação</th>
+                      <th className="py-3 pr-4 font-bold">Entidade</th>
+                      <th className="py-3 pr-4 font-bold">Detalhes</th>
                     </tr>
+                  </thead>
+
+                  <tbody>
+                    {logs.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="py-8 text-center font-bold text-[#08553F]"
+                        >
+                          Nenhum log encontrado.
+                        </td>
+                      </tr>
+                    )}
+
+                    {logs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className="border-b border-[#C6C6C6]/40 text-sm"
+                      >
+                        <td className="py-4 pr-4 font-semibold text-[#08553F]">
+                          {formatDateTime(log.createdAt)}
+                        </td>
+
+                        <td className="py-4 pr-4 text-[#878787]">
+                          {log.user ? (
+                            <div>
+                              <p className="font-bold text-[#08553F]">
+                                {log.user.name}
+                              </p>
+
+                              <p className="text-xs text-[#878787]">
+                                {log.user.email}
+                              </p>
+                            </div>
+                          ) : (
+                            "Usuário removido"
+                          )}
+                        </td>
+
+                        <td className="py-4 pr-4">
+                          <span className="rounded-full bg-[#00CF7B]/15 px-3 py-1 text-xs font-bold text-[#08553F]">
+                            {log.action}
+                          </span>
+                        </td>
+
+                        <td className="py-4 pr-4 font-semibold text-[#08553F]">
+                          {log.entity}
+                        </td>
+
+                        <td className="max-w-xl py-4 pr-4 text-[#878787]">
+                          {log.details || "Sem detalhes."}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 border-t border-[#C6C6C6]/50 pt-5 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm font-semibold text-[#878787]">
+                  Exibindo {logs.length} de {totalLogs} registros. Página{" "}
+                  {currentPage} de {totalPages}.
+                </p>
+
+                <div className="flex gap-3">
+                  {hasPreviousPage ? (
+                    <Link
+                      href={`/dashboard/admin/logs?pagina=${currentPage - 1}`}
+                      className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                    >
+                      Página anterior
+                    </Link>
+                  ) : (
+                    <span className="cursor-not-allowed rounded-2xl border border-[#C6C6C6]/60 px-5 py-3 text-sm font-bold text-[#878787]/60">
+                      Página anterior
+                    </span>
                   )}
 
-                  {logs.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="border-b border-gray-100 text-sm"
+                  {hasNextPage ? (
+                    <Link
+                      href={`/dashboard/admin/logs?pagina=${currentPage + 1}`}
+                      className="rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
                     >
-                      <td className="py-4 pr-4 text-gray-700">
-                        {formatDateTime(log.createdAt)}
-                      </td>
-
-                      <td className="py-4 pr-4 text-gray-700">
-                        {log.user ? (
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {log.user.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {log.user.email}
-                            </p>
-                          </div>
-                        ) : (
-                          "Usuário removido"
-                        )}
-                      </td>
-
-                      <td className="py-4 pr-4">
-                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
-                          {log.action}
-                        </span>
-                      </td>
-
-                      <td className="py-4 pr-4 text-gray-700">
-                        {log.entity}
-                      </td>
-
-                      <td className="max-w-xl py-4 pr-4 text-gray-600">
-                        {log.details || "Sem detalhes."}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
-              <p className="text-sm text-gray-500">
-                Exibindo {logs.length} de {totalLogs} registros. Página{" "}
-                {currentPage} de {totalPages}.
-              </p>
-
-              <div className="flex gap-3">
-                {hasPreviousPage ? (
-                  <Link
-                    href={`/dashboard/admin/logs?pagina=${currentPage - 1}`}
-                    className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
-                  >
-                    Página anterior
-                  </Link>
-                ) : (
-                  <span className="cursor-not-allowed rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-400">
-                    Página anterior
-                  </span>
-                )}
-
-                {hasNextPage ? (
-                  <Link
-                    href={`/dashboard/admin/logs?pagina=${currentPage + 1}`}
-                    className="rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-green-700"
-                  >
-                    Próxima página
-                  </Link>
-                ) : (
-                  <span className="cursor-not-allowed rounded-xl bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-400">
-                    Próxima página
-                  </span>
-                )}
+                      Próxima página
+                    </Link>
+                  ) : (
+                    <span className="cursor-not-allowed rounded-2xl bg-[#F7F4E7] px-5 py-3 text-sm font-bold text-[#878787]/60">
+                      Próxima página
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
