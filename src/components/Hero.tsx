@@ -1,15 +1,20 @@
 import Link from "next/link";
+import CannaLeafPattern from "@/components/CannaLeafPattern";
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[#F7F4E7]">
-      <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#00CF7B]/20 blur-3xl" />
+    <section className="relative overflow-hidden border-b border-[#C6C6C6]/60 bg-gradient-to-br from-[#F7F4E7] via-white to-[#F3EFA1]/70">
+      <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-[#00CF7B]/20 blur-3xl" />
       <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-[#F3EFA1]/70 blur-3xl" />
+
+      <CannaLeafPattern className="absolute -bottom-24 right-4 h-96 w-96 rotate-12 text-[#08553F]/5" />
+      <CannaLeafPattern className="absolute bottom-20 right-80 hidden h-48 w-48 -rotate-12 text-[#00CF7B]/10 lg:block" />
+      <CannaLeafPattern className="absolute top-12 right-44 hidden h-32 w-32 rotate-[22deg] text-[#08553F]/5 xl:block" />
 
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-24 lg:grid-cols-2">
         <div>
-          <span className="inline-flex rounded-full border border-[#00CF7B]/40 bg-white/70 px-4 py-2 text-sm font-semibold text-[#08553F] shadow-sm">
-            Cannabis medicinal com orientação segura
+          <span className="inline-flex rounded-full border border-[#00CF7B]/40 bg-white px-5 py-3 text-sm font-bold text-[#08553F] shadow-sm">
+            🌿 Cannabis medicinal com orientação segura
           </span>
 
           <h1 className="mt-8 max-w-3xl text-5xl font-extrabold tracking-tight text-[#08553F] md:text-7xl">
@@ -31,7 +36,7 @@ export default function Hero() {
 
             <Link
               href="/cadastro"
-              className="rounded-2xl border border-[#08553F]/30 bg-white/70 px-7 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-7 py-4 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
             >
               Criar conta gratuita
             </Link>
@@ -51,6 +56,7 @@ export default function Hero() {
                     <p className="text-sm font-semibold text-[#878787]">
                       Plataforma CannaDoctor
                     </p>
+
                     <p className="text-xl font-bold text-[#08553F]">
                       Jornada segura do paciente
                     </p>
