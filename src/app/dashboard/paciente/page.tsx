@@ -22,10 +22,10 @@ function getStatusLabel(status: string) {
 }
 
 function getStatusClass(status: string) {
-  if (status === "PENDING") return "bg-yellow-100 text-yellow-800";
-  if (status === "CONFIRMED") return "bg-green-100 text-green-800";
-  if (status === "CANCELLED") return "bg-red-100 text-red-800";
-  if (status === "COMPLETED") return "bg-blue-100 text-blue-800";
+  if (status === "PENDING") return "bg-[#F3EFA1] text-[#08553F]";
+  if (status === "CONFIRMED") return "bg-[#00CF7B]/15 text-[#08553F]";
+  if (status === "CANCELLED") return "bg-red-100 text-red-700";
+  if (status === "COMPLETED") return "bg-blue-100 text-blue-700";
 
   return "bg-gray-100 text-gray-800";
 }
@@ -108,170 +108,215 @@ export default async function DashboardPacientePage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-green-700">
-                Área do paciente
-              </p>
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <section className="relative overflow-hidden border-b border-[#C6C6C6]/60 bg-gradient-to-br from-[#F7F4E7] via-white to-[#F3EFA1]/60">
+          <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#00CF7B]/20 blur-3xl" />
 
-              <h1 className="mt-2 text-4xl font-bold text-gray-900">
-                Olá, {patient.user.name}
-              </h1>
+          <div className="relative mx-auto max-w-7xl px-6 py-16">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <span className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm">
+                  Área do paciente
+                </span>
 
-              <p className="mt-4 text-gray-600">
-                Acompanhe suas consultas, agendamentos e informações de atendimento.
-              </p>
-            </div>
+                <h1 className="mt-6 max-w-3xl text-5xl font-extrabold tracking-tight text-[#08553F] md:text-6xl">
+                  Olá, {patient.user.name}
+                </h1>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/dashboard/paciente/perfil"
-                className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
-              >
-                Meu Perfil
-              </Link>
+                <p className="mt-5 max-w-2xl text-lg leading-8 text-[#878787]">
+                  Acompanhe suas consultas, documentos e solicitações em uma
+                  jornada de cuidado mais simples, segura e organizada.
+                </p>
+              </div>
 
-              {doctor?.approvalStatus === "APPROVED" && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
                 <Link
-                  href="/dashboard/medico"
-                  className="rounded-xl bg-emerald-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-emerald-700"
+                  href="/dashboard/paciente/perfil"
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
                 >
-                  Painel Médico
+                  Meu perfil
                 </Link>
-              )}
 
-              <Link
-                href="/logout"
-                className="rounded-xl bg-red-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-red-700"
-              >
-                Sair
-              </Link>
+                {doctor?.approvalStatus === "APPROVED" && (
+                  <Link
+                    href="/dashboard/medico"
+                    className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                  >
+                    Painel médico
+                  </Link>
+                )}
+
+                <Link
+                  href="/logout"
+                  className="rounded-2xl bg-red-600 px-5 py-3 text-center font-bold text-white transition hover:bg-red-700"
+                >
+                  Sair
+                </Link>
+              </div>
             </div>
           </div>
+        </section>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900">
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
                 Consultas totais
-              </h2>
+              </p>
 
-              <p className="mt-4 text-4xl font-bold text-green-700">
+              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
                 {totalConsultas}
               </p>
 
-              <p className="mt-2 text-gray-600">
+              <p className="mt-3 text-sm text-[#878787]">
                 Consultas vinculadas ao seu cadastro.
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900">Pendentes</h2>
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">Pendentes</p>
 
-              <p className="mt-4 text-4xl font-bold text-yellow-600">
+              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
                 {consultasPendentes}
               </p>
 
-              <p className="mt-2 text-gray-600">
+              <p className="mt-3 text-sm text-[#878787]">
                 Aguardando confirmação médica.
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900">Confirmadas</h2>
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Confirmadas
+              </p>
 
-              <p className="mt-4 text-4xl font-bold text-green-700">
+              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
                 {consultasConfirmadas}
               </p>
 
-              <p className="mt-2 text-gray-600">Consultas confirmadas.</p>
+              <p className="mt-3 text-sm text-[#878787]">
+                Consultas confirmadas.
+              </p>
             </div>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-2">
             <Link
               href="/dashboard/paciente/documentos"
-              className="block rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-green-300 hover:bg-green-50"
+              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
-              <h2 className="text-lg font-bold text-gray-900">
-                Meus documentos
-              </h2>
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <p className="mt-2 text-gray-600">
-                Envie e acompanhe seus documentos médicos.
-              </p>
+              <div className="p-6">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
+                  📎
+                </div>
+
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Meus documentos
+                </h2>
+
+                <p className="mt-2 text-[#878787]">
+                  Envie e acompanhe seus documentos médicos com segurança.
+                </p>
+
+                <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                  Acessar documentos →
+                </p>
+              </div>
             </Link>
 
             {!doctor && (
               <Link
                 href="/dashboard/paciente/solicitar-medico"
-                className="block rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm transition hover:bg-emerald-100"
+                className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
               >
-                <h2 className="text-lg font-bold text-emerald-900">
-                  Quero atender como médico
-                </h2>
+                <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
 
-                <p className="mt-2 text-emerald-800">
-                  Possui CRM e deseja oferecer consultas pela plataforma?
-                  Envie sua candidatura para análise da administração.
-                </p>
+                <div className="p-6">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
+                    ⚕️
+                  </div>
+
+                  <h2 className="text-xl font-extrabold text-[#08553F]">
+                    Quero atender como médico
+                  </h2>
+
+                  <p className="mt-2 text-[#878787]">
+                    Possui CRM e deseja oferecer consultas pela plataforma?
+                    Envie sua candidatura para análise.
+                  </p>
+
+                  <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                    Solicitar cadastro médico →
+                  </p>
+                </div>
               </Link>
             )}
 
             {doctor && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-emerald-900">
-                  Cadastro médico
-                </h2>
+              <div className="overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm">
+                <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-                <p className="mt-2 text-emerald-800">
-                  Status da sua candidatura:{" "}
-                  <strong>{getDoctorStatusLabel(doctor.approvalStatus)}</strong>
-                </p>
+                <div className="p-6">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
+                    ⚕️
+                  </div>
 
-                {doctor.approvalStatus === "APPROVED" && (
-                  <Link
-                    href="/dashboard/medico"
-                    className="mt-4 inline-flex rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
-                  >
-                    Acessar painel médico
-                  </Link>
-                )}
+                  <h2 className="text-xl font-extrabold text-[#08553F]">
+                    Cadastro médico
+                  </h2>
 
-                {doctor.approvalStatus === "PENDING" && (
-                  <p className="mt-4 text-sm text-emerald-700">
-                    Sua solicitação está aguardando análise da administração.
+                  <p className="mt-2 text-[#878787]">
+                    Status da sua candidatura:{" "}
+                    <strong className="text-[#08553F]">
+                      {getDoctorStatusLabel(doctor.approvalStatus)}
+                    </strong>
                   </p>
-                )}
 
-                {doctor.approvalStatus === "REJECTED" && (
-                  <Link
-                    href="/dashboard/medico/perfil"
-                    className="mt-4 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-300 transition hover:bg-emerald-100"
-                  >
-                    Revisar perfil médico
-                  </Link>
-                )}
+                  {doctor.approvalStatus === "APPROVED" && (
+                    <Link
+                      href="/dashboard/medico"
+                      className="mt-5 inline-flex rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                    >
+                      Acessar painel médico
+                    </Link>
+                  )}
+
+                  {doctor.approvalStatus === "PENDING" && (
+                    <p className="mt-5 rounded-2xl bg-[#F3EFA1] p-4 text-sm font-semibold text-[#08553F]">
+                      Sua solicitação está aguardando análise da administração.
+                    </p>
+                  )}
+
+                  {doctor.approvalStatus === "REJECTED" && (
+                    <Link
+                      href="/dashboard/medico/perfil"
+                      className="mt-5 inline-flex rounded-2xl bg-[#F3EFA1] px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                    >
+                      Revisar perfil médico
+                    </Link>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
-          <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
+          <div className="mt-10 rounded-[2rem] bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
+                <h2 className="text-2xl font-extrabold text-[#08553F]">
                   Minhas consultas
                 </h2>
 
-                <p className="mt-2 text-gray-600">
+                <p className="mt-2 text-[#878787]">
                   Veja suas próximas consultas e o status de cada atendimento.
                 </p>
               </div>
 
               <Link
                 href="/medicos"
-                className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
+                className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
               >
                 Agendar nova consulta
               </Link>
@@ -279,30 +324,38 @@ export default async function DashboardPacientePage() {
 
             <div className="mt-6 space-y-4">
               {proximasConsultas.length === 0 && (
-                <p className="text-gray-600">Nenhuma consulta encontrada.</p>
+                <div className="rounded-2xl bg-[#F7F4E7] p-5">
+                  <p className="font-bold text-[#08553F]">
+                    Nenhuma consulta encontrada.
+                  </p>
+
+                  <p className="mt-2 text-sm text-[#878787]">
+                    Quando você agendar uma consulta, ela aparecerá aqui.
+                  </p>
+                </div>
               )}
 
               {proximasConsultas.map((appointment) => (
                 <div
                   key={appointment.id}
-                  className="rounded-xl border border-gray-200 p-4"
+                  className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-extrabold text-[#08553F]">
                         Dr(a). {appointment.doctor.user.name}
                       </p>
 
-                      <p className="text-sm text-gray-600">
+                      <p className="mt-1 text-sm text-[#878787]">
                         {appointment.doctor.specialty}
                       </p>
 
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="mt-2 text-sm font-semibold text-[#08553F]">
                         {formatDate(appointment.date)}
                       </p>
 
                       {appointment.notes && (
-                        <p className="mt-2 text-sm text-gray-500">
+                        <p className="mt-2 text-sm text-[#878787]">
                           Observações: {appointment.notes}
                         </p>
                       )}
@@ -310,7 +363,7 @@ export default async function DashboardPacientePage() {
 
                     <div className="flex flex-col gap-3 md:items-end">
                       <span
-                        className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${getStatusClass(
+                        className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
                           appointment.status
                         )}`}
                       >
@@ -328,7 +381,7 @@ export default async function DashboardPacientePage() {
 
                           <button
                             type="submit"
-                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-200"
+                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
                           >
                             Cancelar consulta
                           </button>

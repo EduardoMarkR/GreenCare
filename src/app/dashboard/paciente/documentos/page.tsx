@@ -43,116 +43,157 @@ export default async function DocumentosPacientePage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen bg-gray-50">
-        <section className="mx-auto max-w-5xl px-6 py-16">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
+      <main className="min-h-screen bg-[#F7F4E7]">
+        <section className="relative overflow-hidden border-b border-[#C6C6C6]/60 bg-gradient-to-br from-[#F7F4E7] via-white to-[#F3EFA1]/60">
+          <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#00CF7B]/20 blur-3xl" />
+
+          <div className="relative mx-auto max-w-7xl px-6 py-14">
             <Link
               href="/dashboard/paciente"
-              className="rounded-xl border border-gray-300 px-5 py-3 text-center font-semibold text-gray-700 transition hover:bg-gray-100"
+              className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
             >
-              Voltar ao Painel
+              ← Voltar ao painel
             </Link>
 
-            <Link
-              href="/medicos"
-              className="rounded-xl bg-green-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-green-700"
-            >
-              Agendar Consulta
-            </Link>
+            <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-[#08553F] md:text-5xl">
+              Meus documentos
+            </h1>
+
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-[#878787]">
+              Envie exames, laudos, receitas e documentos médicos para manter
+              sua jornada de cuidado organizada em um só lugar.
+            </p>
           </div>
+        </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl bg-white p-8 shadow-md">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Enviar Documento
-              </h1>
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-8 lg:grid-cols-[420px_1fr]">
+            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <p className="mt-2 text-gray-600">
-                Envie exames, laudos, receitas ou documentos médicos.
-              </p>
-
-              <form action={createDocument} className="mt-8 space-y-6">
-                
-                <div>
-                  <label className="mb-2 block font-medium text-gray-700">
-                    Nome do documento
-                  </label>
-
-                  <input
-                    type="text"
-                    name="name"
-                    required
-                    placeholder="Ex: Exame de sangue"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
-                  />
+              <div className="p-8">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
+                  📎
                 </div>
 
-                <div>
-                  <label className="mb-2 block font-medium text-gray-700">
-                    Arquivo
-                  </label>
-
-                  <input
-                    type="file"
-                    name="file"
-                    required
-                    accept=".pdf,.png,.jpg,.jpeg,.webp"
-                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
-                  />
-
-                  <p className="mt-2 text-sm text-gray-500">
-                    Formatos aceitos: PDF, PNG, JPG, JPEG e WEBP.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700"
-                >
+                <h2 className="text-2xl font-extrabold text-[#08553F]">
                   Enviar documento
-                </button>
-              </form>
+                </h2>
+
+                <p className="mt-2 text-[#878787]">
+                  Adicione arquivos importantes para futuras consultas médicas.
+                </p>
+
+                <form action={createDocument} className="mt-8 space-y-6">
+                  <div>
+                    <label className="mb-2 block font-bold text-[#08553F]">
+                      Nome do documento
+                    </label>
+
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      placeholder="Ex: Exame de sangue"
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block font-bold text-[#08553F]">
+                      Arquivo
+                    </label>
+
+                    <input
+                      type="file"
+                      name="file"
+                      required
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] file:mr-4 file:rounded-full file:border-0 file:bg-[#08553F] file:px-4 file:py-2 file:font-bold file:text-white"
+                    />
+
+                    <p className="mt-3 rounded-2xl bg-[#F7F4E7] p-4 text-sm font-semibold text-[#878787]">
+                      Formatos aceitos: PDF, PNG, JPG, JPEG e WEBP.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                  >
+                    Enviar documento
+                  </button>
+                </form>
+              </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-8 shadow-md">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Documentos cadastrados
-              </h2>
+            <div className="rounded-[2rem] bg-white p-8 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-[#08553F]">
+                    Documentos cadastrados
+                  </h2>
 
-              <div className="mt-6 space-y-4">
-                {patient.documents.length === 0 && (
-                  <p className="text-gray-600">
-                    Nenhum documento cadastrado.
+                  <p className="mt-2 text-[#878787]">
+                    Total de arquivos enviados:{" "}
+                    <strong className="text-[#08553F]">
+                      {patient.documents.length}
+                    </strong>
                   </p>
+                </div>
+
+                <Link
+                  href="/medicos"
+                  className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Agendar consulta
+                </Link>
+              </div>
+
+              <div className="mt-8 space-y-4">
+                {patient.documents.length === 0 && (
+                  <div className="rounded-2xl bg-[#F7F4E7] p-6">
+                    <p className="font-bold text-[#08553F]">
+                      Nenhum documento cadastrado.
+                    </p>
+
+                    <p className="mt-2 text-sm text-[#878787]">
+                      Quando você enviar um documento, ele aparecerá aqui.
+                    </p>
+                  </div>
                 )}
 
                 {patient.documents.map((document) => (
                   <div
                     key={document.id}
-                    className="rounded-xl border border-gray-200 p-4"
+                    className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5 transition hover:border-[#00CF7B]"
                   >
-                    <p className="font-semibold text-gray-900">
-                      {document.name}
-                    </p>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-lg font-extrabold text-[#08553F]">
+                          {document.name}
+                        </p>
 
-                    {document.fileType && (
-                      <p className="text-sm text-gray-600">
-                        Tipo: {document.fileType}
-                      </p>
-                    )}
+                        {document.fileType && (
+                          <p className="mt-1 text-sm text-[#878787]">
+                            Tipo: {document.fileType}
+                          </p>
+                        )}
 
-                    <p className="mt-1 text-sm text-gray-600">
-                      Enviado em {formatDate(document.createdAt)}
-                    </p>
+                        <p className="mt-1 text-sm font-semibold text-[#08553F]">
+                          Enviado em {formatDate(document.createdAt)}
+                        </p>
+                      </div>
 
-                    <a
-                      href={document.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-3 inline-block font-semibold text-green-700 hover:text-green-800"
-                    >
-                      Abrir documento
-                    </a>
+                      <a
+                        href={document.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
+                      >
+                        Abrir documento →
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
