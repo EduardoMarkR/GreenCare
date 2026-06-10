@@ -8,9 +8,8 @@ export async function updateAvailability(formData: FormData) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
 
-  if (!userId || userRole !== "DOCTOR") {
+  if (!userId) {
     redirect("/login");
   }
 
@@ -29,8 +28,8 @@ export async function updateAvailability(formData: FormData) {
     },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado.");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
   }
 
   const availability = await prisma.availability.findFirst({
@@ -41,7 +40,9 @@ export async function updateAvailability(formData: FormData) {
   });
 
   if (!availability) {
-    throw new Error("Horário não encontrado ou não pertence a este médico.");
+    throw new Error(
+      "Horário não encontrado ou não pertence a este médico."
+    );
   }
 
   await prisma.availability.update({

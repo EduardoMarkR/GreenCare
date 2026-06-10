@@ -34,9 +34,8 @@ export default async function DashboardMedicoPage() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
 
-  if (!userId || userRole !== "DOCTOR") {
+  if (!userId) {
     redirect("/login");
   }
 
@@ -49,8 +48,8 @@ export default async function DashboardMedicoPage() {
     },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado.");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
   }
 
   const totalHorarios = await prisma.availability.count({
@@ -106,6 +105,13 @@ export default async function DashboardMedicoPage() {
         <section className="mx-auto max-w-7xl px-6 py-12">
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
+              href="/selecionar-perfil"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Alternar perfil
+            </Link>
+
+            <Link
               href="/dashboard/medico/perfil"
               className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
             >
@@ -134,41 +140,49 @@ export default async function DashboardMedicoPage() {
             </Link>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Horários cadastrados
-              </p>
+          <div className="grid items-stretch gap-6 md:grid-cols-3">
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Horários cadastrados
+                </p>
 
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {totalHorarios}
-              </p>
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {totalHorarios}
+                </p>
+              </div>
 
               <p className="mt-3 text-sm text-[#878787]">
                 Disponibilidades criadas na sua agenda.
               </p>
             </div>
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Consultas totais
-              </p>
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Consultas totais
+                </p>
 
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {totalConsultas}
-              </p>
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {totalConsultas}
+                </p>
+              </div>
 
               <p className="mt-3 text-sm text-[#878787]">
                 Consultas vinculadas ao seu perfil.
               </p>
             </div>
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">Pendentes</p>
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Pendentes
+                </p>
 
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {consultasPendentes}
-              </p>
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {consultasPendentes}
+                </p>
+              </div>
 
               <p className="mt-3 text-sm text-[#878787]">
                 Consultas aguardando confirmação.
@@ -176,14 +190,14 @@ export default async function DashboardMedicoPage() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+          <div className="mt-10 grid items-stretch gap-6 lg:grid-cols-3">
             <Link
               href="/dashboard/medico/perfil"
-              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
               <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <div className="p-6">
+              <div className="flex h-full flex-col p-6">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
                   🩺
                 </div>
@@ -196,7 +210,7 @@ export default async function DashboardMedicoPage() {
                   Edite seus dados, CRM, bio, atendimento e valor da consulta.
                 </p>
 
-                <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Editar perfil →
                 </p>
               </div>
@@ -204,11 +218,11 @@ export default async function DashboardMedicoPage() {
 
             <Link
               href="/medico/horarios"
-              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
               <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
 
-              <div className="p-6">
+              <div className="flex h-full flex-col p-6">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
                   📅
                 </div>
@@ -221,7 +235,7 @@ export default async function DashboardMedicoPage() {
                   Veja, crie ou remova horários disponíveis para pacientes.
                 </p>
 
-                <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Gerenciar agenda →
                 </p>
               </div>
@@ -229,11 +243,11 @@ export default async function DashboardMedicoPage() {
 
             <Link
               href="/medico/consultas"
-              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
               <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <div className="p-6">
+              <div className="flex h-full flex-col p-6">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
                   💬
                 </div>
@@ -246,7 +260,7 @@ export default async function DashboardMedicoPage() {
                   Confirme, cancele, conclua e acompanhe os atendimentos.
                 </p>
 
-                <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Ver consultas →
                 </p>
               </div>

@@ -11,9 +11,8 @@ export default async function PerfilMedicoPage() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
 
-  if (!userId || userRole !== "DOCTOR") {
+  if (!userId) {
     redirect("/login");
   }
 
@@ -26,8 +25,8 @@ export default async function PerfilMedicoPage() {
     },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado.");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
   }
 
   return (
@@ -200,6 +199,13 @@ export default async function PerfilMedicoPage() {
                 className="mt-6 inline-flex w-full justify-center rounded-2xl bg-[#00CF7B] px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
               >
                 Minha agenda
+              </Link>
+
+              <Link
+                href="/selecionar-perfil"
+                className="mt-3 inline-flex w-full justify-center rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+              >
+                Alternar perfil
               </Link>
             </aside>
           </div>

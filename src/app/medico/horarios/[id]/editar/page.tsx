@@ -25,9 +25,8 @@ export default async function EditarHorarioPage({
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
 
-  if (!userId || userRole !== "DOCTOR") {
+  if (!userId) {
     redirect("/login");
   }
 
@@ -37,8 +36,8 @@ export default async function EditarHorarioPage({
     },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado.");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
   }
 
   const availability = await prisma.availability.findFirst({

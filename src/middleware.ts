@@ -7,8 +7,7 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Rotas de Admin
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/dashboard/admin")) {
     if (!userId) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
@@ -18,25 +17,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Rotas de Médico
-  if (pathname.startsWith("/medico")) {
+  if (
+    pathname.startsWith("/dashboard/paciente") ||
+    pathname.startsWith("/dashboard/medico") ||
+    pathname.startsWith("/medico") ||
+    pathname.startsWith("/selecionar-perfil")
+  ) {
     if (!userId) {
       return NextResponse.redirect(new URL("/login", request.url));
-    }
-
-    if (userRole !== "DOCTOR") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-  }
-
-  // Futuro dashboard do paciente
-  if (pathname.startsWith("/paciente")) {
-    if (!userId) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-
-    if (userRole !== "PATIENT") {
-      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
@@ -45,8 +33,10 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
+    "/dashboard/admin/:path*",
+    "/dashboard/paciente/:path*",
+    "/dashboard/medico/:path*",
     "/medico/:path*",
-    "/paciente/:path*",
+    "/selecionar-perfil",
   ],
 };

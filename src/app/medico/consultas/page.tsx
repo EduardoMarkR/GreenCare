@@ -68,9 +68,8 @@ export default async function ConsultasMedicoPage({
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
 
-  if (!userId || userRole !== "DOCTOR") {
+  if (!userId) {
     redirect("/login");
   }
 
@@ -78,7 +77,14 @@ export default async function ConsultasMedicoPage({
   const selectedStatus = params?.status ?? "ALL";
   const searchTerm = params?.busca?.trim() ?? "";
 
-  const validStatuses = ["ALL", "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"];
+  const validStatuses = [
+    "ALL",
+    "PENDING",
+    "CONFIRMED",
+    "CANCELLED",
+    "COMPLETED",
+  ];
+
   const statusFilter = validStatuses.includes(selectedStatus)
     ? selectedStatus
     : "ALL";
@@ -89,8 +95,8 @@ export default async function ConsultasMedicoPage({
     },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado.");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
   }
 
   const [

@@ -12,6 +12,10 @@ export async function loginAction(formData: FormData) {
     where: {
       email,
     },
+    include: {
+      patient: true,
+      doctor: true,
+    },
   });
 
   if (!user || user.password !== password) {
@@ -32,11 +36,19 @@ export async function loginAction(formData: FormData) {
     maxAge: 60 * 60 * 24 * 7,
   });
 
+  const hasPatientProfile = Boolean(user.patient);
+  const hasApprovedDoctorProfile =
+    Boolean(user.doctor) && user.doctor?.approvalStatus === "APPROVED";
+
   if (user.role === "ADMIN") {
-    redirect("/admin");
+    redirect("/dashboard/admin");
   }
 
-  if (user.role === "DOCTOR") {
+  if (hasPatientProfile && hasApprovedDoctorProfile) {
+    redirect("/selecionar-perfil");
+  }
+
+  if (hasApprovedDoctorProfile || user.role === "DOCTOR") {
     redirect("/dashboard/medico");
   }
 

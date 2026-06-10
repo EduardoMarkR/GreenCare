@@ -26,8 +26,8 @@ export async function createAvailability(formData: FormData) {
     },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado para o usuário logado.");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
   }
 
   await prisma.availability.create({

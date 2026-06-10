@@ -1,10 +1,31 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
+import { prisma } from "@/lib/prisma";
 import { createAvailability } from "./actions";
 
-export default function NovoHorarioPage() {
+export default async function NovoHorarioPage() {
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+
+  if (!userId) {
+    redirect("/login");
+  }
+
+  const doctor = await prisma.doctor.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/login");
+  }
+
   return (
     <>
       <Navbar />
