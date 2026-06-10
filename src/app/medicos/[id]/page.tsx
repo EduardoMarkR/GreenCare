@@ -36,22 +36,48 @@ export default async function DoctorPage({ params }: Props) {
     },
     include: {
       user: true,
-      availabilities: {
-        orderBy: [
-          {
-            date: "asc",
-          },
-          {
-            startTime: "asc",
-          },
-        ],
-      },
     },
   });
 
   if (!doctor) {
     notFound();
   }
+
+  const activeAppointments = await prisma.appointment.findMany({
+    where: {
+      doctorId: doctor.id,
+      status: {
+        in: ["PENDING", "CONFIRMED", "COMPLETED"],
+      },
+      availabilityId: {
+        not: null,
+      },
+    },
+    select: {
+      availabilityId: true,
+    },
+  });
+
+  const unavailableAvailabilityIds = activeAppointments
+    .map((appointment) => appointment.availabilityId)
+    .filter((availabilityId): availabilityId is string => Boolean(availabilityId));
+
+  const availabilities = await prisma.availability.findMany({
+    where: {
+      doctorId: doctor.id,
+      id: {
+        notIn: unavailableAvailabilityIds,
+      },
+    },
+    orderBy: [
+      {
+        date: "asc",
+      },
+      {
+        startTime: "asc",
+      },
+    ],
+  });
 
   return (
     <>
@@ -123,7 +149,7 @@ export default async function DoctorPage({ params }: Props) {
                     </p>
 
                     <p className="mt-2 text-xl font-extrabold text-[#08553F]">
-                      {doctor.availabilities.length}
+                      {availabilities.length}
                     </p>
                   </div>
                 </div>
@@ -175,7 +201,7 @@ export default async function DoctorPage({ params }: Props) {
                   </p>
 
                   <p className="mt-1 text-2xl font-extrabold">
-                    {doctor.availabilities.length}
+                    {availabilities.length}
                   </p>
                 </div>
 
@@ -205,7 +231,7 @@ export default async function DoctorPage({ params }: Props) {
               </p>
             </div>
 
-            {doctor.availabilities.length === 0 ? (
+            {availabilities.length === 0 ? (
               <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
                 <p className="text-xl font-bold text-[#08553F]">
                   Nenhum horário disponível no momento.
@@ -225,7 +251,7 @@ export default async function DoctorPage({ params }: Props) {
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {doctor.availabilities.map((availability) => (
+                {availabilities.map((availability) => (
                   <Link
                     key={availability.id}
                     href={`/agendar/${availability.id}`}

@@ -66,10 +66,36 @@ export default async function MedicosPage({ searchParams }: MedicosPageProps) {
     },
   });
 
+  const activeAppointments = await prisma.appointment.findMany({
+    where: {
+      status: {
+        in: ["PENDING", "CONFIRMED", "COMPLETED"],
+      },
+      availabilityId: {
+        not: null,
+      },
+      doctor: {
+        approved: true,
+      },
+    },
+    select: {
+      availabilityId: true,
+    },
+  });
+
+  const unavailableAvailabilityIds = activeAppointments
+    .map((appointment) => appointment.availabilityId)
+    .filter((availabilityId): availabilityId is string =>
+      Boolean(availabilityId)
+    );
+
   const totalAvailabilities = await prisma.availability.count({
     where: {
       doctor: {
         approved: true,
+      },
+      id: {
+        notIn: unavailableAvailabilityIds,
       },
     },
   });
