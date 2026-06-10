@@ -7,6 +7,13 @@ import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { updateAppointmentStatus } from "./actions";
 
+type ConsultasMedicoPageProps = {
+  searchParams?: Promise<{
+    status?: string;
+    busca?: string;
+  }>;
+};
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
@@ -31,7 +38,33 @@ function getStatusClass(status: string) {
   return "bg-gray-100 text-gray-800";
 }
 
-export default async function ConsultasMedicoPage() {
+function getFilterClass(isActive: boolean) {
+  return isActive
+    ? "rounded-full bg-[#08553F] px-5 py-2 text-sm font-bold text-white shadow-sm"
+    : "rounded-full border border-[#08553F]/20 bg-white px-5 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]";
+}
+
+function getFilterHref(status: string, searchTerm: string) {
+  const params = new URLSearchParams();
+
+  if (status !== "ALL") {
+    params.set("status", status);
+  }
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  const queryString = params.toString();
+
+  return queryString
+    ? `/medico/consultas?${queryString}`
+    : "/medico/consultas";
+}
+
+export default async function ConsultasMedicoPage({
+  searchParams,
+}: ConsultasMedicoPageProps) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
@@ -40,6 +73,15 @@ export default async function ConsultasMedicoPage() {
   if (!userId || userRole !== "DOCTOR") {
     redirect("/login");
   }
+
+  const params = await searchParams;
+  const selectedStatus = params?.status ?? "ALL";
+  const searchTerm = params?.busca?.trim() ?? "";
+
+  const validStatuses = ["ALL", "PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"];
+  const statusFilter = validStatuses.includes(selectedStatus)
+    ? selectedStatus
+    : "ALL";
 
   const doctor = await prisma.doctor.findUnique({
     where: {
@@ -51,26 +93,105 @@ export default async function ConsultasMedicoPage() {
     throw new Error("Médico não encontrado.");
   }
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      doctorId: doctor.id,
-    },
-    include: {
-      patient: {
-        include: {
-          user: true,
-          documents: {
-            orderBy: {
-              createdAt: "desc",
+  const [
+    appointments,
+    totalAppointments,
+    pendingAppointments,
+    confirmedAppointments,
+    cancelledAppointments,
+    completedAppointments,
+  ] = await Promise.all([
+    prisma.appointment.findMany({
+      where: {
+        doctorId: doctor.id,
+        ...(statusFilter !== "ALL"
+          ? {
+              status: statusFilter as
+                | "PENDING"
+                | "CONFIRMED"
+                | "CANCELLED"
+                | "COMPLETED",
+            }
+          : {}),
+        ...(searchTerm
+          ? {
+              OR: [
+                {
+                  notes: {
+                    contains: searchTerm,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  patient: {
+                    user: {
+                      name: {
+                        contains: searchTerm,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                },
+                {
+                  patient: {
+                    user: {
+                      email: {
+                        contains: searchTerm,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        patient: {
+          include: {
+            user: true,
+            documents: {
+              orderBy: {
+                createdAt: "desc",
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      date: "asc",
-    },
-  });
+      orderBy: {
+        date: "asc",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        doctorId: doctor.id,
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        doctorId: doctor.id,
+        status: "PENDING",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        doctorId: doctor.id,
+        status: "CONFIRMED",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        doctorId: doctor.id,
+        status: "CANCELLED",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        doctorId: doctor.id,
+        status: "COMPLETED",
+      },
+    }),
+  ]);
 
   return (
     <>
@@ -80,7 +201,7 @@ export default async function ConsultasMedicoPage() {
         <CannaPageHero
           badge="Consultas médicas"
           title="Minhas consultas"
-          description="Acompanhe consultas, altere status dos atendimentos e visualize documentos enviados pelos pacientes."
+          description="Acompanhe consultas, filtre atendimentos pendentes, altere status e visualize documentos enviados pelos pacientes."
           backHref="/dashboard/medico"
           backLabel="Voltar ao painel"
         />
@@ -102,7 +223,141 @@ export default async function ConsultasMedicoPage() {
             </Link>
           </div>
 
-          <div className="grid gap-5">
+          <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
+              <p className="text-sm font-bold text-[#878787]">Total</p>
+              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                {totalAppointments}
+              </p>
+            </div>
+
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
+              <p className="text-sm font-bold text-[#878787]">Pendentes</p>
+              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                {pendingAppointments}
+              </p>
+            </div>
+
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
+              <p className="text-sm font-bold text-[#878787]">Confirmadas</p>
+              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                {confirmedAppointments}
+              </p>
+            </div>
+
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
+              <p className="text-sm font-bold text-[#878787]">Canceladas</p>
+              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                {cancelledAppointments}
+              </p>
+            </div>
+
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
+              <p className="text-sm font-bold text-[#878787]">Concluídas</p>
+              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                {completedAppointments}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Buscar consulta
+                </h2>
+
+                <p className="mt-1 text-sm text-[#878787]">
+                  Busque por nome do paciente, e-mail ou observações.
+                </p>
+              </div>
+
+              {searchTerm && (
+                <p className="text-sm text-[#878787]">
+                  Resultado para:{" "}
+                  <strong className="text-[#08553F]">{searchTerm}</strong>
+                </p>
+              )}
+            </div>
+
+            <form
+              action="/medico/consultas"
+              className="mt-5 flex flex-col gap-3 md:flex-row"
+            >
+              {statusFilter !== "ALL" && (
+                <input type="hidden" name="status" value={statusFilter} />
+              )}
+
+              <input
+                type="text"
+                name="busca"
+                defaultValue={searchTerm}
+                placeholder="Buscar por paciente, e-mail ou observação"
+                className="min-h-12 flex-1 rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
+              />
+
+              <button
+                type="submit"
+                className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+              >
+                Buscar
+              </button>
+
+              {(searchTerm || statusFilter !== "ALL") && (
+                <Link
+                  href="/medico/consultas"
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-6 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Limpar
+                </Link>
+              )}
+            </form>
+          </div>
+
+          <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-extrabold text-[#08553F]">
+              Filtrar por status
+            </h2>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href={getFilterHref("ALL", searchTerm)}
+                className={getFilterClass(statusFilter === "ALL")}
+              >
+                Todas ({totalAppointments})
+              </Link>
+
+              <Link
+                href={getFilterHref("PENDING", searchTerm)}
+                className={getFilterClass(statusFilter === "PENDING")}
+              >
+                Pendentes ({pendingAppointments})
+              </Link>
+
+              <Link
+                href={getFilterHref("CONFIRMED", searchTerm)}
+                className={getFilterClass(statusFilter === "CONFIRMED")}
+              >
+                Confirmadas ({confirmedAppointments})
+              </Link>
+
+              <Link
+                href={getFilterHref("CANCELLED", searchTerm)}
+                className={getFilterClass(statusFilter === "CANCELLED")}
+              >
+                Canceladas ({cancelledAppointments})
+              </Link>
+
+              <Link
+                href={getFilterHref("COMPLETED", searchTerm)}
+                className={getFilterClass(statusFilter === "COMPLETED")}
+              >
+                Concluídas ({completedAppointments})
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-5">
             {appointments.length === 0 && (
               <div className="rounded-[2rem] bg-white p-6 shadow-sm">
                 <p className="font-bold text-[#08553F]">
@@ -110,7 +365,7 @@ export default async function ConsultasMedicoPage() {
                 </p>
 
                 <p className="mt-2 text-sm text-[#878787]">
-                  Quando pacientes agendarem consultas, elas aparecerão aqui.
+                  Ajuste os filtros ou aguarde novos agendamentos.
                 </p>
               </div>
             )}

@@ -1,11 +1,12 @@
 import CannaPageHero from "@/components/CannaPageHero";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
-import { createDocument } from "./actions";
+import { createDocument, deletePatientDocument } from "./actions";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -45,7 +46,6 @@ export default async function DocumentosPacientePage() {
       <Navbar />
 
       <main className="min-h-screen bg-[#F7F4E7]">
-       
         <CannaPageHero
           badge="Documentos médicos"
           title="Meus documentos"
@@ -55,7 +55,7 @@ export default async function DocumentosPacientePage() {
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
-          <div className="grid gap-8 lg:grid-cols-[420px_1fr]">
+          <div className="grid items-start gap-8 lg:grid-cols-[420px_1fr]">
             <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
               <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
@@ -83,7 +83,7 @@ export default async function DocumentosPacientePage() {
                       name="name"
                       required
                       placeholder="Ex: Exame de sangue"
-                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
                     />
                   </div>
 
@@ -173,14 +173,32 @@ export default async function DocumentosPacientePage() {
                         </p>
                       </div>
 
-                      <a
-                        href={document.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
-                      >
-                        Abrir documento →
-                      </a>
+                      <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
+                        <a
+                          href={document.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
+                        >
+                          Abrir documento →
+                        </a>
+
+                        <form action={deletePatientDocument}>
+                          <input
+                            type="hidden"
+                            name="documentId"
+                            value={document.id}
+                          />
+
+                          <ConfirmSubmitButton
+                            message="Tem certeza que deseja excluir este documento?"
+                            loadingText="Excluindo..."
+                            className="inline-flex w-fit rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
+                          >
+                            Excluir
+                          </ConfirmSubmitButton>
+                        </form>
+                      </div>
                     </div>
                   </div>
                 ))}

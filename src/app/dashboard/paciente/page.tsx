@@ -132,41 +132,49 @@ export default async function DashboardPacientePage() {
             </Link>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Consultas totais
-              </p>
+          <div className="grid items-stretch gap-6 md:grid-cols-3">
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Consultas totais
+                </p>
 
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {totalConsultas}
-              </p>
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {totalConsultas}
+                </p>
+              </div>
 
               <p className="mt-3 text-sm text-[#878787]">
                 Consultas vinculadas ao seu cadastro.
               </p>
             </div>
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">Pendentes</p>
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Pendentes
+                </p>
 
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {consultasPendentes}
-              </p>
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {consultasPendentes}
+                </p>
+              </div>
 
               <p className="mt-3 text-sm text-[#878787]">
                 Aguardando confirmação médica.
               </p>
             </div>
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Confirmadas
-              </p>
+            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Confirmadas
+                </p>
 
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {consultasConfirmadas}
-              </p>
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {consultasConfirmadas}
+                </p>
+              </div>
 
               <p className="mt-3 text-sm text-[#878787]">
                 Consultas confirmadas.
@@ -174,14 +182,14 @@ export default async function DashboardPacientePage() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
+          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-2">
             <Link
               href="/dashboard/paciente/documentos"
-              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
               <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-              <div className="p-6">
+              <div className="flex h-full flex-col p-6">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
                   📎
                 </div>
@@ -194,7 +202,7 @@ export default async function DashboardPacientePage() {
                   Envie e acompanhe seus documentos médicos com segurança.
                 </p>
 
-                <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Acessar documentos →
                 </p>
               </div>
@@ -203,11 +211,11 @@ export default async function DashboardPacientePage() {
             {!doctor && (
               <Link
                 href="/dashboard/paciente/solicitar-medico"
-                className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
 
-                <div className="p-6">
+                <div className="flex h-full flex-col p-6">
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
                     ⚕️
                   </div>
@@ -221,7 +229,7 @@ export default async function DashboardPacientePage() {
                     Envie sua candidatura para análise.
                   </p>
 
-                  <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                  <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                     Solicitar cadastro médico →
                   </p>
                 </div>
@@ -229,10 +237,10 @@ export default async function DashboardPacientePage() {
             )}
 
             {doctor && (
-              <div className="overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm">
+              <div className="h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm">
                 <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-                <div className="p-6">
+                <div className="flex h-full flex-col p-6">
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
                     ⚕️
                   </div>
@@ -251,14 +259,14 @@ export default async function DashboardPacientePage() {
                   {doctor.approvalStatus === "APPROVED" && (
                     <Link
                       href="/dashboard/medico"
-                      className="mt-5 inline-flex rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                      className="mt-auto inline-flex w-fit rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
                     >
                       Acessar painel médico
                     </Link>
                   )}
 
                   {doctor.approvalStatus === "PENDING" && (
-                    <p className="mt-5 rounded-2xl bg-[#F3EFA1] p-4 text-sm font-semibold text-[#08553F]">
+                    <p className="mt-auto rounded-2xl bg-[#F3EFA1] p-4 text-sm font-semibold text-[#08553F]">
                       Sua solicitação está aguardando análise da administração.
                     </p>
                   )}
@@ -266,7 +274,7 @@ export default async function DashboardPacientePage() {
                   {doctor.approvalStatus === "REJECTED" && (
                     <Link
                       href="/dashboard/medico/perfil"
-                      className="mt-5 inline-flex rounded-2xl bg-[#F3EFA1] px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                      className="mt-auto inline-flex w-fit rounded-2xl bg-[#F3EFA1] px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
                     >
                       Revisar perfil médico
                     </Link>
