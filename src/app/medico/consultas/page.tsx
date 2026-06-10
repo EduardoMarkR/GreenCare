@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
-import { updateAppointmentStatus } from "./actions";
+import { saveMeetingUrl, updateAppointmentStatus } from "./actions";
 
 type ConsultasMedicoPageProps = {
   searchParams?: Promise<{
@@ -399,6 +399,23 @@ export default async function ConsultasMedicoPage({
                           Observações: {appointment.notes}
                         </p>
                       )}
+
+                      {appointment.meetingUrl && (
+                        <div className="mt-4 rounded-2xl bg-[#00CF7B]/10 p-4">
+                          <p className="text-sm font-bold text-[#08553F]">
+                            Link da teleconsulta
+                          </p>
+
+                          <a
+                            href={appointment.meetingUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                          >
+                            Entrar na consulta →
+                          </a>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-3 md:items-end">
@@ -482,6 +499,46 @@ export default async function ConsultasMedicoPage({
                       </div>
                     </div>
                   </div>
+
+                  {(appointment.status === "CONFIRMED" ||
+                    appointment.status === "PENDING") && (
+                    <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                      <h3 className="font-extrabold text-[#08553F]">
+                        Link da teleconsulta
+                      </h3>
+
+                      <p className="mt-2 text-sm text-[#878787]">
+                        Cole aqui o link do Google Meet, Zoom, Teams ou outra
+                        plataforma de atendimento online.
+                      </p>
+
+                      <form
+                        action={saveMeetingUrl}
+                        className="mt-4 flex flex-col gap-3 md:flex-row"
+                      >
+                        <input
+                          type="hidden"
+                          name="appointmentId"
+                          value={appointment.id}
+                        />
+
+                        <input
+                          type="url"
+                          name="meetingUrl"
+                          defaultValue={appointment.meetingUrl ?? ""}
+                          placeholder="https://meet.google.com/..."
+                          className="min-h-12 flex-1 rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B]"
+                        />
+
+                        <button
+                          type="submit"
+                          className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                        >
+                          Salvar link
+                        </button>
+                      </form>
+                    </div>
+                  )}
 
                   <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
                     <h3 className="font-extrabold text-[#08553F]">

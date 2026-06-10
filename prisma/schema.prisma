@@ -93,6 +93,7 @@ model Appointment {
   date           DateTime
   status         AppointmentStatus @default(PENDING)
   notes          String?
+  meetingUrl     String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
