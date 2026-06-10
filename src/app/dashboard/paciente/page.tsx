@@ -322,7 +322,7 @@ export default async function DashboardPacientePage() {
                   key={appointment.id}
                   className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p className="font-extrabold text-[#08553F]">
                         Dr(a). {appointment.doctor.user.name}
@@ -341,6 +341,28 @@ export default async function DashboardPacientePage() {
                           Observações: {appointment.notes}
                         </p>
                       )}
+
+                      {appointment.status === "CONFIRMED" &&
+                        appointment.meetingUrl && (
+                          <div className="mt-4 rounded-2xl bg-[#00CF7B]/10 p-4">
+                            <p className="text-sm font-bold text-[#08553F]">
+                              Consulta online disponível
+                            </p>
+
+                            <p className="mt-1 text-sm text-[#878787]">
+                              O médico adicionou o link da teleconsulta.
+                            </p>
+
+                            <a
+                              href={appointment.meetingUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                            >
+                              Entrar na consulta →
+                            </a>
+                          </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-3 md:items-end">
