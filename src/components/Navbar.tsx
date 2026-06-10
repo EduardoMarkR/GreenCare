@@ -1,6 +1,27 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
-export default function Navbar() {
+export default async function Navbar() {
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+
+  const user = userId
+    ? await prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        include: {
+          patient: true,
+          doctor: true,
+        },
+      })
+    : null;
+
+  const hasApprovedDoctorProfile =
+    Boolean(user?.doctor) && user?.doctor?.approvalStatus === "APPROVED";
+
   return (
     <nav className="sticky top-0 z-50 border-b border-[#C6C6C6] bg-[#F7F4E7]/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -29,28 +50,141 @@ export default function Navbar() {
             Médicos
           </Link>
 
-          <Link
-            href="/login"
-            className="font-medium text-[#08553F] transition hover:text-[#00CF7B]"
-          >
-            Entrar
-          </Link>
+          {!user && (
+            <>
+              <Link
+                href="/login"
+                className="font-medium text-[#08553F] transition hover:text-[#00CF7B]"
+              >
+                Entrar
+              </Link>
 
-          <Link
-            href="/cadastro"
-            className="rounded-xl bg-[#08553F] px-5 py-3 font-semibold text-white transition hover:bg-[#00CF7B]"
-          >
-            Criar Conta
-          </Link>
+              <Link
+                href="/cadastro"
+                className="rounded-xl bg-[#08553F] px-5 py-3 font-semibold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+              >
+                Criar Conta
+              </Link>
+            </>
+          )}
+
+          {user && (
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl bg-white px-5 py-3 font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#08553F] text-sm font-extrabold text-white">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+
+                <span className="max-w-[220px] truncate">{user.name}</span>
+
+                <span className="text-xs transition group-open:rotate-180">
+                  ▼
+                </span>
+              </summary>
+
+              <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-2xl border border-[#C6C6C6]/60 bg-white shadow-xl">
+                <div className="border-b border-[#C6C6C6]/40 p-5">
+                  <p className="truncate font-extrabold text-[#08553F]">
+                    {user.name}
+                  </p>
+
+                  <p className="mt-1 truncate text-sm text-[#878787]">
+                    {user.email}
+                  </p>
+                </div>
+
+                <div className="p-3">
+                  {user.patient && (
+                    <>
+                      <Link
+                        href="/dashboard/paciente"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Painel do paciente
+                      </Link>
+
+                      <Link
+                        href="/dashboard/paciente/perfil"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Meu perfil
+                      </Link>
+
+                      <Link
+                        href="/dashboard/paciente/documentos"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Meus documentos
+                      </Link>
+                    </>
+                  )}
+
+                  {hasApprovedDoctorProfile && (
+                    <>
+                      <div className="my-2 h-px bg-[#C6C6C6]/40" />
+
+                      <Link
+                        href="/dashboard/medico"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Painel médico
+                      </Link>
+
+                      <Link
+                        href="/medico/horarios"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Minha agenda
+                      </Link>
+
+                      <Link
+                        href="/medico/consultas"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Minhas consultas
+                      </Link>
+                    </>
+                  )}
+
+                  {user.patient && hasApprovedDoctorProfile && (
+                    <Link
+                      href="/selecionar-perfil"
+                      className="mt-2 block rounded-xl bg-[#F3EFA1] px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                    >
+                      Alternar perfil
+                    </Link>
+                  )}
+
+                  <div className="my-2 h-px bg-[#C6C6C6]/40" />
+
+                  <Link
+                    href="/logout"
+                    className="block rounded-xl px-4 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50"
+                  >
+                    Sair
+                  </Link>
+                </div>
+              </div>
+            </details>
+          )}
         </div>
 
         <div className="md:hidden">
-          <Link
-            href="/login"
-            className="rounded-lg bg-[#08553F] px-4 py-2 text-sm font-semibold text-white"
-          >
-            Entrar
-          </Link>
+          {!user ? (
+            <Link
+              href="/login"
+              className="rounded-lg bg-[#08553F] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Entrar
+            </Link>
+          ) : (
+            <Link
+              href="/selecionar-perfil"
+              className="rounded-lg bg-[#08553F] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Conta
+            </Link>
+          )}
         </div>
       </div>
     </nav>
