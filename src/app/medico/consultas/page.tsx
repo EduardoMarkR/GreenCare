@@ -181,14 +181,14 @@ export default async function ConsultasMedicoPage({
       where: appointmentWhere,
       include: {
         availability: true,
+        documents: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
         patient: {
           include: {
             user: true,
-            documents: {
-              orderBy: {
-                createdAt: "desc",
-              },
-            },
           },
         },
       },
@@ -228,7 +228,9 @@ export default async function ConsultasMedicoPage({
   const appointmentToConfirm =
     selectedAppointmentId &&
     (selectedAction === "CANCELLED" || selectedAction === "COMPLETED")
-      ? appointments.find((appointment) => appointment.id === selectedAppointmentId)
+      ? appointments.find(
+          (appointment) => appointment.id === selectedAppointmentId
+        )
       : null;
 
   const actionLabel =
@@ -275,7 +277,9 @@ export default async function ConsultasMedicoPage({
                 {appointmentToConfirm.availability ? (
                   <>
                     , das{" "}
-                    <strong>{appointmentToConfirm.availability.startTime}</strong>{" "}
+                    <strong>
+                      {appointmentToConfirm.availability.startTime}
+                    </strong>{" "}
                     às{" "}
                     <strong>{appointmentToConfirm.availability.endTime}</strong>
                   </>
@@ -623,17 +627,17 @@ export default async function ConsultasMedicoPage({
 
                   <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
                     <h3 className="font-extrabold text-[#08553F]">
-                      Documentos do paciente
+                      Documentos desta consulta
                     </h3>
 
                     <div className="mt-4 space-y-3">
-                      {appointment.patient.documents.length === 0 && (
+                      {appointment.documents.length === 0 && (
                         <p className="text-sm text-[#878787]">
-                          Nenhum documento enviado por este paciente.
+                          Nenhum documento vinculado a esta consulta.
                         </p>
                       )}
 
-                      {appointment.patient.documents.map((document) => (
+                      {appointment.documents.map((document) => (
                         <div
                           key={document.id}
                           className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"

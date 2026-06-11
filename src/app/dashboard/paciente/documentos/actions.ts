@@ -15,25 +15,63 @@ function getStoragePathFromPublicUrl(fileUrl: string) {
   return decodeURIComponent(fileUrl.slice(index + marker.length));
 }
 
+function isAllowedFile(file: File) {
+  const allowedTypes = [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+  ];
+
+  return allowedTypes.includes(file.type);
+}
+
 export async function createDocument(formData: FormData) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId || userRole !== "PATIENT") {
+  if (!userId) {
     redirect("/login");
   }
 
-  const name = String(formData.get("name") ?? "");
+  if (activeProfile !== "PATIENT") {
+    redirect("/");
+  }
+
+  const appointmentId = String(formData.get("appointmentId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
   const file = formData.get("file");
 
+  if (!appointmentId) {
+    redirect(
+      "/dashboard/paciente/documentos?erro=Selecione uma consulta para vincular o documento."
+    );
+  }
+
   if (!name) {
-    throw new Error("Nome do documento é obrigatório.");
+    redirect(
+      "/dashboard/paciente/documentos?erro=Nome do documento é obrigatório."
+    );
   }
 
   if (!(file instanceof File) || file.size === 0) {
-    throw new Error("Arquivo é obrigatório.");
+    redirect("/dashboard/paciente/documentos?erro=Arquivo é obrigatório.");
+  }
+
+  if (!isAllowedFile(file)) {
+    redirect(
+      "/dashboard/paciente/documentos?erro=Formato inválido. Envie PDF, PNG, JPG, JPEG ou WEBP."
+    );
+  }
+
+  const maxFileSize = 10 * 1024 * 1024;
+
+  if (file.size > maxFileSize) {
+    redirect(
+      "/dashboard/paciente/documentos?erro=Arquivo muito grande. O limite é 10MB."
+    );
   }
 
   const patient = await prisma.patient.findUnique({
@@ -43,11 +81,27 @@ export async function createDocument(formData: FormData) {
   });
 
   if (!patient) {
-    throw new Error("Paciente não encontrado.");
+    redirect("/login");
+  }
+
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      patientId: patient.id,
+      status: {
+        in: ["PENDING", "CONFIRMED", "COMPLETED"],
+      },
+    },
+  });
+
+  if (!appointment) {
+    redirect(
+      "/dashboard/paciente/documentos?erro=Consulta não encontrada para vincular o documento."
+    );
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "file";
-  const filePath = `${patient.id}-${crypto.randomUUID()}.${extension}`;
+  const filePath = `${patient.id}/${appointment.id}/${crypto.randomUUID()}.${extension}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
@@ -60,7 +114,11 @@ export async function createDocument(formData: FormData) {
     });
 
   if (error) {
-    throw new Error(`Erro ao enviar arquivo: ${error.message}`);
+    redirect(
+      `/dashboard/paciente/documentos?erro=${encodeURIComponent(
+        `Erro ao enviar arquivo: ${error.message}`
+      )}`
+    );
   }
 
   const { data } = supabase.storage
@@ -70,6 +128,7 @@ export async function createDocument(formData: FormData) {
   await prisma.document.create({
     data: {
       patientId: patient.id,
+      appointmentId: appointment.id,
       name,
       fileUrl: data.publicUrl,
       fileType: file.type || extension,
@@ -78,22 +137,30 @@ export async function createDocument(formData: FormData) {
 
   revalidatePath("/dashboard/paciente/documentos");
   revalidatePath("/dashboard/paciente");
+  revalidatePath("/medico/consultas");
+  revalidatePath("/medico/historico");
+
+  redirect("/dashboard/paciente/documentos");
 }
 
 export async function deletePatientDocument(formData: FormData) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId || userRole !== "PATIENT") {
+  if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "PATIENT") {
+    redirect("/");
   }
 
   const documentId = String(formData.get("documentId") ?? "");
 
   if (!documentId) {
-    throw new Error("Documento não informado.");
+    redirect("/dashboard/paciente/documentos?erro=Documento não informado.");
   }
 
   const patient = await prisma.patient.findUnique({
@@ -103,7 +170,7 @@ export async function deletePatientDocument(formData: FormData) {
   });
 
   if (!patient) {
-    throw new Error("Paciente não encontrado.");
+    redirect("/login");
   }
 
   const document = await prisma.document.findFirst({
@@ -114,7 +181,7 @@ export async function deletePatientDocument(formData: FormData) {
   });
 
   if (!document) {
-    throw new Error("Documento não encontrado.");
+    redirect("/dashboard/paciente/documentos?erro=Documento não encontrado.");
   }
 
   const storagePath = getStoragePathFromPublicUrl(document.fileUrl);
@@ -131,4 +198,8 @@ export async function deletePatientDocument(formData: FormData) {
 
   revalidatePath("/dashboard/paciente/documentos");
   revalidatePath("/dashboard/paciente");
+  revalidatePath("/medico/consultas");
+  revalidatePath("/medico/historico");
+
+  redirect("/dashboard/paciente/documentos");
 }

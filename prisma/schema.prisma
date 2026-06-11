@@ -100,17 +100,20 @@ model Appointment {
   patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor       Doctor        @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   availability Availability? @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
+  documents    Document[]
 }
 
 model Document {
-  id        String   @id @default(uuid())
-  patientId String
-  name      String
-  fileUrl   String
-  fileType  String?
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  patientId     String
+  appointmentId String?
+  name          String
+  fileUrl       String
+  fileType      String?
+  createdAt     DateTime @default(now())
 
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 }
 
 model AuditLog {
