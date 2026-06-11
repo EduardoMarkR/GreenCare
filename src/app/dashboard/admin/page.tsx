@@ -37,6 +37,12 @@ function getStatusClass(status: string) {
   return "bg-gray-100 text-gray-800";
 }
 
+function getPercent(value: number, total: number) {
+  if (total <= 0) return "0%";
+
+  return `${Math.min((value / total) * 100, 100)}%`;
+}
+
 export default async function DashboardAdminPage() {
   const cookieStore = await cookies();
 
@@ -61,58 +67,33 @@ export default async function DashboardAdminPage() {
     completedAppointments,
     totalDocuments,
     totalAuditLogs,
-    appointments,
+    revenueAppointments,
     recentAppointments,
+    recentDoctors,
+    recentDocuments,
+    recentLogs,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.doctor.count(),
-    prisma.doctor.count({
-      where: {
-        approvalStatus: "APPROVED",
-      },
-    }),
-    prisma.doctor.count({
-      where: {
-        approvalStatus: "PENDING",
-      },
-    }),
-    prisma.doctor.count({
-      where: {
-        approvalStatus: "REJECTED",
-      },
-    }),
+    prisma.doctor.count({ where: { approvalStatus: "APPROVED" } }),
+    prisma.doctor.count({ where: { approvalStatus: "PENDING" } }),
+    prisma.doctor.count({ where: { approvalStatus: "REJECTED" } }),
     prisma.patient.count(),
     prisma.appointment.count(),
-    prisma.appointment.count({
-      where: {
-        status: "PENDING",
-      },
-    }),
-    prisma.appointment.count({
-      where: {
-        status: "CONFIRMED",
-      },
-    }),
-    prisma.appointment.count({
-      where: {
-        status: "CANCELLED",
-      },
-    }),
-    prisma.appointment.count({
-      where: {
-        status: "COMPLETED",
-      },
-    }),
+    prisma.appointment.count({ where: { status: "PENDING" } }),
+    prisma.appointment.count({ where: { status: "CONFIRMED" } }),
+    prisma.appointment.count({ where: { status: "CANCELLED" } }),
+    prisma.appointment.count({ where: { status: "COMPLETED" } }),
     prisma.document.count(),
     prisma.auditLog.count(),
     prisma.appointment.findMany({
-      include: {
-        doctor: true,
-      },
       where: {
         status: {
-          not: "CANCELLED",
+          in: ["CONFIRMED", "COMPLETED"],
         },
+      },
+      include: {
+        doctor: true,
       },
     }),
     prisma.appointment.findMany({
@@ -133,96 +114,139 @@ export default async function DashboardAdminPage() {
       },
       take: 6,
     }),
+    prisma.doctor.findMany({
+      where: {
+        approvalStatus: "PENDING",
+      },
+      include: {
+        user: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 5,
+    }),
+    prisma.document.findMany({
+      include: {
+        patient: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 5,
+    }),
+    prisma.auditLog.findMany({
+      include: {
+        user: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 5,
+    }),
   ]);
 
-  const estimatedRevenue = appointments.reduce((total, appointment) => {
+  const estimatedRevenue = revenueAppointments.reduce((total, appointment) => {
     return total + Number(appointment.doctor.price);
   }, 0);
 
-  const cards = [
+  const quickActions = [
     {
-      title: "Usuários cadastrados",
-      value: totalUsers,
-      icon: "👥",
-      href: "/dashboard/admin/usuarios",
-    },
-    {
-      title: "Médicos cadastrados",
-      value: totalDoctors,
-      icon: "👨‍⚕️",
+      title: "Médicos",
+      description: "Aprovar, reprovar e revisar perfis médicos.",
       href: "/dashboard/admin/medicos",
+      icon: "⚕️",
+      style: "bg-[#00CF7B] text-[#08553F]",
     },
     {
-      title: "Médicos aprovados",
-      value: approvedDoctors,
-      icon: "✅",
-      href: "/dashboard/admin/medicos?status=APPROVED",
-    },
-    {
-      title: "Médicos pendentes",
-      value: pendingDoctors,
-      icon: "⏳",
-      href: "/dashboard/admin/medicos?status=PENDING",
-    },
-    {
-      title: "Médicos reprovados",
-      value: rejectedDoctors,
-      icon: "❌",
-      href: "/dashboard/admin/medicos?status=REJECTED",
-    },
-    {
-      title: "Pacientes cadastrados",
-      value: totalPatients,
-      icon: "🧑",
+      title: "Pacientes",
+      description: "Consultar pacientes, documentos e histórico.",
       href: "/dashboard/admin/pacientes",
+      icon: "🧑",
+      style: "bg-white text-[#08553F]",
     },
     {
-      title: "Consultas totais",
-      value: totalAppointments,
-      icon: "📅",
+      title: "Consultas",
+      description: "Acompanhar agendamentos e status.",
       href: "/dashboard/admin/consultas",
+      icon: "📅",
+      style: "bg-[#08553F] text-white",
     },
     {
-      title: "Consultas pendentes",
-      value: pendingAppointments,
-      icon: "⏳",
-      href: "/dashboard/admin/consultas?status=PENDING",
-    },
-    {
-      title: "Consultas confirmadas",
-      value: confirmedAppointments,
-      icon: "✅",
-      href: "/dashboard/admin/consultas?status=CONFIRMED",
-    },
-    {
-      title: "Consultas canceladas",
-      value: cancelledAppointments,
-      icon: "❌",
-      href: "/dashboard/admin/consultas?status=CANCELLED",
-    },
-    {
-      title: "Consultas concluídas",
-      value: completedAppointments,
-      icon: "🏁",
-      href: "/dashboard/admin/consultas?status=COMPLETED",
-    },
-    {
-      title: "Documentos enviados",
-      value: totalDocuments,
-      icon: "📎",
+      title: "Documentos",
+      description: "Visualizar arquivos enviados por pacientes.",
       href: "/dashboard/admin/documentos",
+      icon: "📎",
+      style: "bg-white text-[#08553F]",
     },
     {
-      title: "Logs de auditoria",
-      value: totalAuditLogs,
-      icon: "📋",
+      title: "Usuários",
+      description: "Gerenciar permissões e contas.",
+      href: "/dashboard/admin/usuarios",
+      icon: "👥",
+      style: "bg-white text-[#08553F]",
+    },
+    {
+      title: "Logs",
+      description: "Auditar ações administrativas.",
       href: "/dashboard/admin/logs",
+      icon: "📋",
+      style: "bg-white text-[#08553F]",
+    },
+  ];
+
+  const mainMetrics = [
+    {
+      title: "Usuários",
+      value: totalUsers,
+      helper: "Contas cadastradas",
+      href: "/dashboard/admin/usuarios",
+      icon: "👥",
+      gradient: "from-[#08553F] to-[#00CF7B]",
+    },
+    {
+      title: "Pacientes",
+      value: totalPatients,
+      helper: "Pacientes ativos no sistema",
+      href: "/dashboard/admin/pacientes",
+      icon: "🧑",
+      gradient: "from-blue-400 to-blue-600",
+    },
+    {
+      title: "Médicos",
+      value: totalDoctors,
+      helper: `${pendingDoctors} aguardando análise`,
+      href: "/dashboard/admin/medicos",
+      icon: "⚕️",
+      gradient: "from-[#F3EFA1] to-[#00CF7B]",
+    },
+    {
+      title: "Consultas",
+      value: totalAppointments,
+      helper: `${pendingAppointments} pendentes`,
+      href: "/dashboard/admin/consultas",
+      icon: "📅",
+      gradient: "from-[#08553F] to-[#00CF7B]",
+    },
+    {
+      title: "Documentos",
+      value: totalDocuments,
+      helper: "Arquivos enviados",
+      href: "/dashboard/admin/documentos",
+      icon: "📎",
+      gradient: "from-purple-400 to-purple-700",
     },
     {
       title: "Receita prevista",
       value: formatCurrency(estimatedRevenue),
-      icon: "💰",
+      helper: "Consultas confirmadas/concluídas",
       href: "/dashboard/admin/consultas",
+      icon: "💰",
+      gradient: "from-emerald-400 to-emerald-700",
     },
   ];
 
@@ -234,342 +258,467 @@ export default async function DashboardAdminPage() {
         <CannaPageHero
           badge="Administração"
           title="Central de controle"
-          description="Acompanhe médicos, pacientes, consultas, documentos, auditoria e indicadores da plataforma em tempo real."
+          description="Acompanhe indicadores, aprovações, consultas, documentos e auditoria da plataforma em tempo real."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
-          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link
-              href="/dashboard/admin/medicos"
-              className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Gestão de médicos
-            </Link>
-
-            <Link
-              href="/dashboard/admin/pacientes"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Gestão de pacientes
-            </Link>
-
-            <Link
-              href="/dashboard/admin/consultas"
-              className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-            >
-              Consultas
-            </Link>
-
-            <Link
-              href="/dashboard/admin/documentos"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Documentos
-            </Link>
-
-            <Link
-              href="/dashboard/admin/usuarios"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Usuários
-            </Link>
-
-            <Link
-              href="/dashboard/admin/logs"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Logs
-            </Link>
-
-            <Link
-              href="/logout"
-              className="rounded-2xl bg-red-600 px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-red-700"
-            >
-              Sair
-            </Link>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {cards.map((card) => (
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            {quickActions.map((action) => (
               <Link
-                key={card.title}
-                href={card.href}
-                className="group overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                key={action.title}
+                href={action.href}
+                className={`group rounded-[2rem] border border-[#C6C6C6]/60 p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${action.style}`}
               >
-                <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
+                <div className="text-3xl">{action.icon}</div>
 
-                <div className="p-6">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
-                    {card.icon}
-                  </div>
+                <p className="mt-4 text-lg font-extrabold">{action.title}</p>
 
-                  <p className="mt-5 text-sm font-bold text-[#878787]">
-                    {card.title}
-                  </p>
-
-                  <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
-                    {card.value}
-                  </p>
-
-                  <p className="mt-4 text-sm font-bold text-[#08553F] group-hover:text-[#00CF7B]">
-                    Ver detalhes →
-                  </p>
-                </div>
+                <p className="mt-2 text-sm leading-5 opacity-75">
+                  {action.description}
+                </p>
               </Link>
             ))}
           </div>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            <div className="rounded-[2rem] bg-white p-8 shadow-sm lg:col-span-2">
-              <h2 className="text-2xl font-extrabold text-[#08553F]">
-                Resumo operacional
-              </h2>
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {mainMetrics.map((metric) => (
+                <Link
+                  key={metric.title}
+                  href={metric.href}
+                  className="group overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                >
+                  <div className={`h-2 bg-gradient-to-r ${metric.gradient}`} />
 
-              <p className="mt-2 text-[#878787]">
-                Distribuição dos principais status da operação.
-              </p>
+                  <div className="p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-[#878787]">
+                          {metric.title}
+                        </p>
 
-              <div className="mt-8 space-y-6">
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Médicos aprovados</span>
-                    <span>{approvedDoctors}</span>
+                        <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                          {metric.value}
+                        </p>
+                      </div>
+
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
+                        {metric.icon}
+                      </div>
+                    </div>
+
+                    <p className="mt-4 text-sm font-semibold text-[#878787]">
+                      {metric.helper}
+                    </p>
+
+                    <p className="mt-5 text-sm font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                      Ver detalhes →
+                    </p>
                   </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-[#00CF7B]"
-                      style={{
-                        width:
-                          totalDoctors > 0
-                            ? `${(approvedDoctors / totalDoctors) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Médicos pendentes</span>
-                    <span>{pendingDoctors}</span>
-                  </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-[#F3EFA1]"
-                      style={{
-                        width:
-                          totalDoctors > 0
-                            ? `${(pendingDoctors / totalDoctors) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Médicos reprovados</span>
-                    <span>{rejectedDoctors}</span>
-                  </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-red-500"
-                      style={{
-                        width:
-                          totalDoctors > 0
-                            ? `${(rejectedDoctors / totalDoctors) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Consultas pendentes</span>
-                    <span>{pendingAppointments}</span>
-                  </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-[#F3EFA1]"
-                      style={{
-                        width:
-                          totalAppointments > 0
-                            ? `${(pendingAppointments / totalAppointments) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Consultas confirmadas</span>
-                    <span>{confirmedAppointments}</span>
-                  </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-[#00CF7B]"
-                      style={{
-                        width:
-                          totalAppointments > 0
-                            ? `${(confirmedAppointments / totalAppointments) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Consultas canceladas</span>
-                    <span>{cancelledAppointments}</span>
-                  </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-red-500"
-                      style={{
-                        width:
-                          totalAppointments > 0
-                            ? `${(cancelledAppointments / totalAppointments) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-sm font-bold text-[#08553F]">
-                    <span>Consultas concluídas</span>
-                    <span>{completedAppointments}</span>
-                  </div>
-
-                  <div className="mt-2 h-3 rounded-full bg-[#F7F4E7]">
-                    <div
-                      className="h-3 rounded-full bg-blue-500"
-                      style={{
-                        width:
-                          totalAppointments > 0
-                            ? `${(completedAppointments / totalAppointments) * 100}%`
-                            : "0%",
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
+                </Link>
+              ))}
             </div>
 
-            <div className="relative overflow-hidden rounded-[2rem] bg-[#08553F] p-8 text-white shadow-sm">
+            <aside className="relative overflow-hidden rounded-[2rem] bg-[#08553F] p-8 text-white shadow-sm">
               <div className="absolute -bottom-10 -right-10 text-[9rem] leading-none opacity-10">
                 🌿
               </div>
 
               <div className="relative">
-                <h2 className="text-2xl font-extrabold">Status do MVP</h2>
-
-                <p className="mt-4 leading-7 text-white/80">
-                  A plataforma já possui autenticação, dashboards,
-                  agendamentos, controle de status, perfis, horários médicos,
-                  upload de documentos, gestão administrativa e logs de
-                  auditoria.
+                <p className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-[#00CF7B]">
+                  Status operacional
                 </p>
 
-                <div className="mt-6 rounded-3xl bg-white/10 p-5">
-                  <p className="text-sm font-semibold text-white/70">
-                    Próxima prioridade
-                  </p>
+                <h2 className="mt-6 text-3xl font-extrabold">
+                  Plataforma em operação
+                </h2>
 
-                  <p className="mt-1 text-xl font-extrabold">
-                    Estabilização, paginação e UX
-                  </p>
-                </div>
+                <p className="mt-4 leading-7 text-white/75">
+                  O MVP já possui autenticação segura, dashboards, agenda,
+                  consultas, documentos, teleconsulta, auditoria e gestão
+                  administrativa.
+                </p>
 
-                <div className="mt-6 rounded-3xl bg-white/10 p-5">
-                  <p className="text-sm font-semibold text-white/70">
-                    Receita prevista
-                  </p>
+                <div className="mt-6 grid gap-4">
+                  <div className="rounded-3xl bg-white/10 p-5">
+                    <p className="text-sm font-semibold text-white/70">
+                      Médicos pendentes
+                    </p>
 
-                  <p className="mt-1 text-2xl font-extrabold">
-                    {formatCurrency(estimatedRevenue)}
-                  </p>
+                    <p className="mt-1 text-3xl font-extrabold">
+                      {pendingDoctors}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl bg-white/10 p-5">
+                    <p className="text-sm font-semibold text-white/70">
+                      Consultas pendentes
+                    </p>
+
+                    <p className="mt-1 text-3xl font-extrabold">
+                      {pendingAppointments}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl bg-white/10 p-5">
+                    <p className="text-sm font-semibold text-white/70">
+                      Logs registrados
+                    </p>
+
+                    <p className="mt-1 text-3xl font-extrabold">
+                      {totalAuditLogs}
+                    </p>
+                  </div>
                 </div>
 
                 <Link
                   href="/dashboard/admin/logs"
-                  className="mt-6 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                  className="mt-6 inline-flex w-full justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
                 >
-                  Ver logs de auditoria
+                  Ver auditoria
+                </Link>
+              </div>
+            </aside>
+          </div>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            <div className="rounded-[2rem] bg-white p-8 shadow-sm lg:col-span-2">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-[#08553F]">
+                    Saúde da operação
+                  </h2>
+
+                  <p className="mt-2 text-[#878787]">
+                    Distribuição dos principais status da plataforma.
+                  </p>
+                </div>
+
+                <Link
+                  href="/dashboard/admin/consultas"
+                  className="rounded-2xl border border-[#08553F]/30 px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Ver consultas
+                </Link>
+              </div>
+
+              <div className="mt-8 space-y-6">
+                {[
+                  ["Médicos aprovados", approvedDoctors, totalDoctors, "#00CF7B"],
+                  ["Médicos pendentes", pendingDoctors, totalDoctors, "#F3EFA1"],
+                  ["Médicos reprovados", rejectedDoctors, totalDoctors, "#ef4444"],
+                  [
+                    "Consultas pendentes",
+                    pendingAppointments,
+                    totalAppointments,
+                    "#F3EFA1",
+                  ],
+                  [
+                    "Consultas confirmadas",
+                    confirmedAppointments,
+                    totalAppointments,
+                    "#00CF7B",
+                  ],
+                  [
+                    "Consultas canceladas",
+                    cancelledAppointments,
+                    totalAppointments,
+                    "#ef4444",
+                  ],
+                  [
+                    "Consultas concluídas",
+                    completedAppointments,
+                    totalAppointments,
+                    "#3b82f6",
+                  ],
+                ].map(([label, value, total, color]) => (
+                  <div key={String(label)}>
+                    <div className="flex justify-between gap-4 text-sm font-bold text-[#08553F]">
+                      <span>{label}</span>
+                      <span>
+                        {value} / {total}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-[#F7F4E7]">
+                      <div
+                        className="h-3 rounded-full"
+                        style={{
+                          width: getPercent(Number(value), Number(total)),
+                          backgroundColor: String(color),
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-8 shadow-sm">
+              <h2 className="text-2xl font-extrabold text-[#08553F]">
+                Pendências críticas
+              </h2>
+
+              <p className="mt-2 text-[#878787]">
+                Itens que exigem atenção administrativa.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                <Link
+                  href="/dashboard/admin/medicos?status=PENDING"
+                  className="block rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
+                >
+                  <p className="text-sm font-bold text-[#878787]">
+                    Médicos aguardando aprovação
+                  </p>
+
+                  <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                    {pendingDoctors}
+                  </p>
+                </Link>
+
+                <Link
+                  href="/dashboard/admin/consultas?status=PENDING"
+                  className="block rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
+                >
+                  <p className="text-sm font-bold text-[#878787]">
+                    Consultas aguardando confirmação
+                  </p>
+
+                  <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                    {pendingAppointments}
+                  </p>
+                </Link>
+
+                <Link
+                  href="/dashboard/admin/documentos"
+                  className="block rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
+                >
+                  <p className="text-sm font-bold text-[#878787]">
+                    Documentos enviados
+                  </p>
+
+                  <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                    {totalDocuments}
+                  </p>
                 </Link>
               </div>
             </div>
           </div>
 
-          <div className="mt-12 rounded-[2rem] bg-white p-8 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-2xl font-extrabold text-[#08553F]">
-                  Últimas consultas
-                </h2>
+          <div className="mt-12 grid gap-6 xl:grid-cols-3">
+            <div className="rounded-[2rem] bg-white p-8 shadow-sm xl:col-span-2">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-[#08553F]">
+                    Últimas consultas
+                  </h2>
 
-                <p className="mt-2 text-[#878787]">
-                  Acompanhe os agendamentos mais recentes da plataforma.
-                </p>
-              </div>
-
-              <Link
-                href="/dashboard/admin/consultas"
-                className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-              >
-                Ver todos
-              </Link>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {recentAppointments.length === 0 && (
-                <div className="rounded-2xl bg-[#F7F4E7] p-5">
-                  <p className="font-bold text-[#08553F]">
-                    Nenhuma consulta encontrada.
+                  <p className="mt-2 text-[#878787]">
+                    Agendamentos mais recentes da plataforma.
                   </p>
                 </div>
-              )}
 
-              {recentAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
+                <Link
+                  href="/dashboard/admin/consultas"
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="font-extrabold text-[#08553F]">
-                        Paciente: {appointment.patient.user.name}
+                  Ver todos
+                </Link>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                {recentAppointments.length === 0 && (
+                  <div className="rounded-2xl bg-[#F7F4E7] p-5">
+                    <p className="font-bold text-[#08553F]">
+                      Nenhuma consulta encontrada.
+                    </p>
+                  </div>
+                )}
+
+                {recentAppointments.map((appointment) => (
+                  <div
+                    key={appointment.id}
+                    className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-extrabold text-[#08553F]">
+                          Paciente: {appointment.patient.user.name}
+                        </p>
+
+                        <p className="mt-1 text-sm text-[#878787]">
+                          Médico: {appointment.doctor.user.name}
+                        </p>
+
+                        <p className="mt-1 text-sm font-bold text-[#08553F]">
+                          Data: {formatDate(appointment.date)}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
+                          appointment.status
+                        )}`}
+                      >
+                        {getStatusLabel(appointment.status)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-6">
+              <div className="rounded-[2rem] bg-white p-8 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-[#08553F]">
+                      Médicos pendentes
+                    </h2>
+
+                    <p className="mt-2 text-sm text-[#878787]">
+                      Últimas candidaturas em análise.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/dashboard/admin/medicos?status=PENDING"
+                    className="rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F]"
+                  >
+                    Ver
+                  </Link>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  {recentDoctors.length === 0 && (
+                    <p className="rounded-2xl bg-[#F7F4E7] p-4 text-sm font-bold text-[#08553F]">
+                      Nenhum médico pendente.
+                    </p>
+                  )}
+
+                  {recentDoctors.map((doctor) => (
+                    <div
+                      key={doctor.id}
+                      className="rounded-2xl bg-[#F7F4E7] p-4"
+                    >
+                      <p className="font-bold text-[#08553F]">
+                        {doctor.user.name}
                       </p>
 
                       <p className="mt-1 text-sm text-[#878787]">
-                        Médico: {appointment.doctor.user.name}
-                      </p>
-
-                      <p className="mt-1 text-sm font-bold text-[#08553F]">
-                        Data: {formatDate(appointment.date)}
+                        CRM {doctor.crm}/{doctor.crmUf} • {doctor.specialty}
                       </p>
                     </div>
-
-                    <span
-                      className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
-                        appointment.status
-                      )}`}
-                    >
-                      {getStatusLabel(appointment.status)}
-                    </span>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div className="rounded-[2rem] bg-white p-8 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-[#08553F]">
+                      Documentos recentes
+                    </h2>
+
+                    <p className="mt-2 text-sm text-[#878787]">
+                      Últimos arquivos enviados.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/dashboard/admin/documentos"
+                    className="rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F]"
+                  >
+                    Ver
+                  </Link>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  {recentDocuments.length === 0 && (
+                    <p className="rounded-2xl bg-[#F7F4E7] p-4 text-sm font-bold text-[#08553F]">
+                      Nenhum documento enviado.
+                    </p>
+                  )}
+
+                  {recentDocuments.map((document) => (
+                    <div
+                      key={document.id}
+                      className="rounded-2xl bg-[#F7F4E7] p-4"
+                    >
+                      <p className="font-bold text-[#08553F]">
+                        {document.name}
+                      </p>
+
+                      <p className="mt-1 text-sm text-[#878787]">
+                        {document.patient.user.name} •{" "}
+                        {formatDate(document.createdAt)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] bg-white p-8 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-[#08553F]">
+                      Auditoria recente
+                    </h2>
+
+                    <p className="mt-2 text-sm text-[#878787]">
+                      Últimas ações administrativas.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/dashboard/admin/logs"
+                    className="rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F]"
+                  >
+                    Ver
+                  </Link>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  {recentLogs.length === 0 && (
+                    <p className="rounded-2xl bg-[#F7F4E7] p-4 text-sm font-bold text-[#08553F]">
+                      Nenhum log registrado.
+                    </p>
+                  )}
+
+                  {recentLogs.map((log) => (
+                    <div key={log.id} className="rounded-2xl bg-[#F7F4E7] p-4">
+                      <p className="font-bold text-[#08553F]">{log.action}</p>
+
+                      <p className="mt-1 text-sm text-[#878787]">
+                        {log.user?.name ?? "Usuário removido"} •{" "}
+                        {formatDate(log.createdAt)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-12 flex flex-col gap-3 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-[#08553F]">
+                Checklist antes do deploy
+              </h2>
+
+              <p className="mt-1 text-sm text-[#878787]">
+                Segurança, UX/Admin e compliance devem estar estáveis antes de
+                publicar em produção.
+              </p>
+            </div>
+
+            <Link
+              href="/dashboard/admin/logs"
+              className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+            >
+              Revisar auditoria
+            </Link>
           </div>
         </section>
       </main>
