@@ -8,9 +8,14 @@ export async function updateAvailability(formData: FormData) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const availabilityId = String(formData.get("availabilityId") ?? "");
@@ -19,7 +24,15 @@ export async function updateAvailability(formData: FormData) {
   const endTime = String(formData.get("endTime") ?? "");
 
   if (!availabilityId || !date || !startTime || !endTime) {
-    throw new Error("Todos os campos são obrigatórios.");
+    redirect(
+      `/medico/horarios/${availabilityId}/editar?erro=Todos os campos são obrigatórios.`
+    );
+  }
+
+  if (startTime >= endTime) {
+    redirect(
+      `/medico/horarios/${availabilityId}/editar?erro=A hora inicial precisa ser menor que a hora final.`
+    );
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -29,7 +42,7 @@ export async function updateAvailability(formData: FormData) {
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
   }
 
   const availability = await prisma.availability.findFirst({
@@ -37,11 +50,48 @@ export async function updateAvailability(formData: FormData) {
       id: availabilityId,
       doctorId: doctor.id,
     },
+    include: {
+      appointments: {
+        where: {
+          status: {
+            in: ["PENDING", "CONFIRMED"],
+          },
+        },
+      },
+    },
   });
 
   if (!availability) {
-    throw new Error(
-      "Horário não encontrado ou não pertence a este médico."
+    redirect("/medico/horarios");
+  }
+
+  if (availability.appointments.length > 0) {
+    redirect(
+      `/medico/horarios/${availability.id}/editar?erro=Não é possível editar um horário que já possui consulta pendente ou confirmada.`
+    );
+  }
+
+  const availabilityDate = new Date(`${date}T12:00:00`);
+
+  const conflictingAvailability = await prisma.availability.findFirst({
+    where: {
+      id: {
+        not: availability.id,
+      },
+      doctorId: doctor.id,
+      date: availabilityDate,
+      startTime: {
+        lt: endTime,
+      },
+      endTime: {
+        gt: startTime,
+      },
+    },
+  });
+
+  if (conflictingAvailability) {
+    redirect(
+      `/medico/horarios/${availability.id}/editar?erro=Já existe outro horário cadastrado que conflita com esse intervalo.`
     );
   }
 
@@ -50,7 +100,7 @@ export async function updateAvailability(formData: FormData) {
       id: availability.id,
     },
     data: {
-      date: new Date(`${date}T12:00:00`),
+      date: availabilityDate,
       startTime,
       endTime,
     },
