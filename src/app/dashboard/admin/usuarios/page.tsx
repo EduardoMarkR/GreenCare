@@ -10,8 +10,11 @@ import { updateUserRole } from "./actions";
 type AdminUsuariosPageProps = {
   searchParams?: Promise<{
     busca?: string;
+    pagina?: string;
   }>;
 };
+
+const USERS_PER_PAGE = 10;
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -35,6 +38,18 @@ function getRoleClass(role: string) {
   return "bg-gray-100 text-gray-800";
 }
 
+function getPaginationHref(page: number, searchTerm: string) {
+  const params = new URLSearchParams();
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  params.set("pagina", String(page));
+
+  return `/dashboard/admin/usuarios?${params.toString()}`;
+}
+
 export default async function AdminUsuariosPage({
   searchParams,
 }: AdminUsuariosPageProps) {
@@ -49,50 +64,69 @@ export default async function AdminUsuariosPage({
 
   const params = await searchParams;
   const searchTerm = params?.busca?.trim() ?? "";
+  const currentPage = Math.max(Number(params?.pagina ?? "1"), 1);
+  const skip = (currentPage - 1) * USERS_PER_PAGE;
 
-  const users = await prisma.user.findMany({
-    where: searchTerm
-      ? {
-          OR: [
-            {
-              name: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
+  const where = searchTerm
+    ? {
+        OR: [
+          {
+            name: {
+              contains: searchTerm,
+              mode: "insensitive" as const,
             },
-            {
-              email: {
-                contains: searchTerm,
-                mode: "insensitive",
-              },
+          },
+          {
+            email: {
+              contains: searchTerm,
+              mode: "insensitive" as const,
             },
-          ],
-        }
-      : undefined,
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+          },
+        ],
+      }
+    : undefined;
 
-  const totalUsers = await prisma.user.count();
+  const [
+    users,
+    filteredUsers,
+    totalUsers,
+    totalAdmins,
+    totalDoctors,
+    totalPatients,
+  ] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: USERS_PER_PAGE,
+    }),
+    prisma.user.count({
+      where,
+    }),
+    prisma.user.count(),
+    prisma.user.count({
+      where: {
+        role: "ADMIN",
+      },
+    }),
+    prisma.user.count({
+      where: {
+        role: "DOCTOR",
+      },
+    }),
+    prisma.user.count({
+      where: {
+        role: "PATIENT",
+      },
+    }),
+  ]);
 
-  const totalAdmins = await prisma.user.count({
-    where: {
-      role: "ADMIN",
-    },
-  });
-
-  const totalDoctors = await prisma.user.count({
-    where: {
-      role: "DOCTOR",
-    },
-  });
-
-  const totalPatients = await prisma.user.count({
-    where: {
-      role: "PATIENT",
-    },
-  });
+  const totalPages = Math.max(Math.ceil(filteredUsers / USERS_PER_PAGE), 1);
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const hasPreviousPage = safeCurrentPage > 1;
+  const hasNextPage = safeCurrentPage < totalPages;
 
   return (
     <>
@@ -192,7 +226,26 @@ export default async function AdminUsuariosPage({
             </form>
           </div>
 
-          <div className="mt-10 grid gap-5">
+          <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Usuários cadastrados
+                </h2>
+
+                <p className="mt-1 text-sm text-[#878787]">
+                  Exibindo {users.length} de {filteredUsers} usuário(s)
+                  encontrados. Página {safeCurrentPage} de {totalPages}.
+                </p>
+              </div>
+
+              <p className="w-fit rounded-full bg-[#F7F4E7] px-4 py-2 text-sm font-bold text-[#08553F]">
+                {USERS_PER_PAGE} por página
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5">
             {users.length === 0 && (
               <div className="rounded-[2rem] bg-white p-6 shadow-sm">
                 <p className="font-bold text-[#08553F]">
@@ -294,6 +347,41 @@ export default async function AdminUsuariosPage({
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 rounded-[2rem] bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm font-semibold text-[#878787]">
+              Página {safeCurrentPage} de {totalPages}. Total filtrado:{" "}
+              <strong className="text-[#08553F]">{filteredUsers}</strong>
+            </p>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {hasPreviousPage ? (
+                <Link
+                  href={getPaginationHref(safeCurrentPage - 1, searchTerm)}
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Página anterior
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] px-5 py-3 text-center text-sm font-bold text-[#878787]">
+                  Página anterior
+                </span>
+              )}
+
+              {hasNextPage ? (
+                <Link
+                  href={getPaginationHref(safeCurrentPage + 1, searchTerm)}
+                  className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Próxima página
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-2xl bg-[#F7F4E7] px-5 py-3 text-center text-sm font-bold text-[#878787]">
+                  Próxima página
+                </span>
+              )}
+            </div>
           </div>
         </section>
       </main>
