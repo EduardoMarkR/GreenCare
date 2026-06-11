@@ -6,6 +6,7 @@ export async function GET() {
 
   cookieStore.delete("userId");
   cookieStore.delete("userRole");
+  cookieStore.delete("activeProfile");
 
   redirect("/login");
 }
