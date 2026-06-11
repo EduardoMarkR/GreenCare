@@ -1,15 +1,21 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
 export async function createAvailability(formData: FormData) {
   const cookieStore = await cookies();
+
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const date = String(formData.get("date") ?? "");
@@ -17,7 +23,15 @@ export async function createAvailability(formData: FormData) {
   const endTime = String(formData.get("endTime") ?? "");
 
   if (!date || !startTime || !endTime) {
-    throw new Error("Data, hora inicial e hora final são obrigatórias.");
+    redirect(
+      "/medico/horarios/novo?erro=Data, hora inicial e hora final são obrigatórias."
+    );
+  }
+
+  if (startTime >= endTime) {
+    redirect(
+      "/medico/horarios/novo?erro=A hora inicial precisa ser menor que a hora final."
+    );
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -27,13 +41,30 @@ export async function createAvailability(formData: FormData) {
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
+  }
+
+  const availabilityDate = new Date(`${date}T12:00:00`);
+
+  const existingAvailability = await prisma.availability.findFirst({
+    where: {
+      doctorId: doctor.id,
+      date: availabilityDate,
+      startTime,
+      endTime,
+    },
+  });
+
+  if (existingAvailability) {
+    redirect(
+      "/medico/horarios/novo?erro=Você já cadastrou esse horário para esta data."
+    );
   }
 
   await prisma.availability.create({
     data: {
       doctorId: doctor.id,
-      date: new Date(`${date}T12:00:00`),
+      date: availabilityDate,
       startTime,
       endTime,
     },

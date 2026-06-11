@@ -6,6 +6,7 @@ export default async function Navbar() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   const user = userId
     ? await prisma.user.findUnique({
@@ -19,8 +20,15 @@ export default async function Navbar() {
       })
     : null;
 
+  const hasPatientProfile = Boolean(user?.patient);
+
   const hasApprovedDoctorProfile =
     Boolean(user?.doctor) && user?.doctor?.approvalStatus === "APPROVED";
+
+  const isAdmin = user?.role === "ADMIN";
+  const isDoctorActive = activeProfile === "DOCTOR";
+  const isPatientActive = activeProfile === "PATIENT";
+  const canSwitchProfile = hasPatientProfile && hasApprovedDoctorProfile;
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#C6C6C6] bg-[#F7F4E7]/95 backdrop-blur">
@@ -91,10 +99,46 @@ export default async function Navbar() {
                   <p className="mt-1 truncate text-sm text-[#878787]">
                     {user.email}
                   </p>
+
+                  {activeProfile && (
+                    <p className="mt-3 w-fit rounded-full bg-[#F7F4E7] px-3 py-1 text-xs font-bold text-[#08553F]">
+                      Perfil ativo:{" "}
+                      {activeProfile === "DOCTOR"
+                        ? "Médico"
+                        : activeProfile === "PATIENT"
+                          ? "Paciente"
+                          : "Administrador"}
+                    </p>
+                  )}
                 </div>
 
                 <div className="p-3">
-                  {user.patient && (
+                  {isAdmin && (
+                    <>
+                      <Link
+                        href="/dashboard/admin"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Painel administrativo
+                      </Link>
+
+                      <Link
+                        href="/dashboard/admin/usuarios"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Gestão de usuários
+                      </Link>
+
+                      <Link
+                        href="/dashboard/admin/consultas"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Gestão de consultas
+                      </Link>
+                    </>
+                  )}
+
+                  {!isAdmin && isPatientActive && hasPatientProfile && (
                     <>
                       <Link
                         href="/dashboard/paciente"
@@ -119,15 +163,20 @@ export default async function Navbar() {
                     </>
                   )}
 
-                  {hasApprovedDoctorProfile && (
+                  {!isAdmin && isDoctorActive && hasApprovedDoctorProfile && (
                     <>
-                      <div className="my-2 h-px bg-[#C6C6C6]/40" />
-
                       <Link
                         href="/dashboard/medico"
                         className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
                       >
                         Painel médico
+                      </Link>
+
+                      <Link
+                        href="/dashboard/medico/perfil"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Meu perfil médico
                       </Link>
 
                       <Link
@@ -143,16 +192,27 @@ export default async function Navbar() {
                       >
                         Minhas consultas
                       </Link>
+
+                      <Link
+                        href="/medico/historico"
+                        className="block rounded-xl px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                      >
+                        Histórico médico
+                      </Link>
                     </>
                   )}
 
-                  {user.patient && hasApprovedDoctorProfile && (
-                    <Link
-                      href="/selecionar-perfil"
-                      className="mt-2 block rounded-xl bg-[#F3EFA1] px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
-                    >
-                      Alternar perfil
-                    </Link>
+                  {!isAdmin && canSwitchProfile && (
+                    <>
+                      <div className="my-2 h-px bg-[#C6C6C6]/40" />
+
+                      <Link
+                        href="/selecionar-perfil"
+                        className="block rounded-xl bg-[#F3EFA1] px-4 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                      >
+                        Alternar perfil
+                      </Link>
+                    </>
                   )}
 
                   <div className="my-2 h-px bg-[#C6C6C6]/40" />
@@ -177,9 +237,22 @@ export default async function Navbar() {
             >
               Entrar
             </Link>
-          ) : (
+          ) : canSwitchProfile ? (
             <Link
               href="/selecionar-perfil"
+              className="rounded-lg bg-[#08553F] px-4 py-2 text-sm font-semibold text-white"
+            >
+              Alternar
+            </Link>
+          ) : (
+            <Link
+              href={
+                isAdmin
+                  ? "/dashboard/admin"
+                  : isDoctorActive
+                    ? "/dashboard/medico"
+                    : "/dashboard/paciente"
+              }
               className="rounded-lg bg-[#08553F] px-4 py-2 text-sm font-semibold text-white"
             >
               Conta

@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
+import { selectProfile } from "./actions";
 
 export default async function SelecionarPerfilPage() {
   const cookieStore = await cookies();
@@ -58,57 +58,65 @@ export default async function SelecionarPerfilPage() {
 
         <section className="mx-auto max-w-5xl px-6 py-12">
           <div className="grid gap-6 md:grid-cols-2">
-            <Link
-              href="/dashboard/paciente"
-              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-            >
-              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
+            <form action={selectProfile}>
+              <input type="hidden" name="profile" value="PATIENT" />
 
-              <div className="flex h-full flex-col p-8">
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F7F4E7] text-3xl">
-                  🧑
+              <button
+                type="submit"
+                className="group block h-full w-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
+
+                <div className="flex h-full flex-col p-8">
+                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F7F4E7] text-3xl">
+                    🧑
+                  </div>
+
+                  <h2 className="text-2xl font-extrabold text-[#08553F]">
+                    Entrar como paciente
+                  </h2>
+
+                  <p className="mt-3 leading-7 text-[#878787]">
+                    Acesse suas consultas, documentos, dados pessoais e
+                    histórico como paciente da plataforma.
+                  </p>
+
+                  <p className="mt-auto pt-8 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                    Acessar painel do paciente →
+                  </p>
                 </div>
+              </button>
+            </form>
 
-                <h2 className="text-2xl font-extrabold text-[#08553F]">
-                  Entrar como paciente
-                </h2>
+            <form action={selectProfile}>
+              <input type="hidden" name="profile" value="DOCTOR" />
 
-                <p className="mt-3 leading-7 text-[#878787]">
-                  Acesse suas consultas, documentos, dados pessoais e histórico
-                  como paciente da plataforma.
-                </p>
+              <button
+                type="submit"
+                className="group block h-full w-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              >
+                <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
 
-                <p className="mt-auto pt-8 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
-                  Acessar painel do paciente →
-                </p>
-              </div>
-            </Link>
+                <div className="flex h-full flex-col p-8">
+                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F3EFA1] text-3xl">
+                    ⚕️
+                  </div>
 
-            <Link
-              href="/dashboard/medico"
-              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-            >
-              <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
+                  <h2 className="text-2xl font-extrabold text-[#08553F]">
+                    Entrar como médico
+                  </h2>
 
-              <div className="flex h-full flex-col p-8">
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F3EFA1] text-3xl">
-                  ⚕️
+                  <p className="mt-3 leading-7 text-[#878787]">
+                    Gerencie sua agenda, consultas, perfil profissional e
+                    atendimentos médicos.
+                  </p>
+
+                  <p className="mt-auto pt-8 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                    Acessar painel médico →
+                  </p>
                 </div>
-
-                <h2 className="text-2xl font-extrabold text-[#08553F]">
-                  Entrar como médico
-                </h2>
-
-                <p className="mt-3 leading-7 text-[#878787]">
-                  Gerencie sua agenda, consultas, perfil profissional e
-                  atendimentos médicos.
-                </p>
-
-                <p className="mt-auto pt-8 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
-                  Acessar painel médico →
-                </p>
-              </div>
-            </Link>
+              </button>
+            </form>
           </div>
 
           <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">

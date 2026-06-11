@@ -7,13 +7,29 @@ import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { createAvailability } from "./actions";
 
-export default async function NovoHorarioPage() {
+type NovoHorarioPageProps = {
+  searchParams?: Promise<{
+    erro?: string;
+  }>;
+};
+
+export default async function NovoHorarioPage({
+  searchParams,
+}: NovoHorarioPageProps) {
+  const params = await searchParams;
+  const erro = params?.erro;
+
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -23,7 +39,7 @@ export default async function NovoHorarioPage() {
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
   }
 
   return (
@@ -53,6 +69,12 @@ export default async function NovoHorarioPage() {
                   Escolha a data e o intervalo de horário disponível para
                   atendimento.
                 </p>
+
+                {erro ? (
+                  <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-700">
+                    {erro}
+                  </div>
+                ) : null}
 
                 <form action={createAvailability} className="mt-8 space-y-6">
                   <div>

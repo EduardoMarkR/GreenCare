@@ -23,7 +23,8 @@ export async function loginAction(formData: FormData) {
     throw new Error("E-mail ou senha inválidos.");
   }
 
-  const isBcryptHash = user.password.startsWith("$2a$") || user.password.startsWith("$2b$");
+  const isBcryptHash =
+    user.password.startsWith("$2a$") || user.password.startsWith("$2b$");
 
   const passwordIsValid = isBcryptHash
     ? await bcrypt.compare(password, user.password)
@@ -48,25 +49,22 @@ export async function loginAction(formData: FormData) {
 
   const cookieStore = await cookies();
 
-  cookieStore.set("userId", user.id, {
+  const cookieOptions = {
     httpOnly: true,
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
-    sameSite: "lax",
-  });
+    sameSite: "lax" as const,
+  };
 
-  cookieStore.set("userRole", user.role, {
-    httpOnly: true,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-    sameSite: "lax",
-  });
+  cookieStore.set("userId", user.id, cookieOptions);
+  cookieStore.set("userRole", user.role, cookieOptions);
 
   const hasPatientProfile = Boolean(user.patient);
   const hasApprovedDoctorProfile =
     Boolean(user.doctor) && user.doctor?.approvalStatus === "APPROVED";
 
   if (user.role === "ADMIN") {
+    cookieStore.set("activeProfile", "ADMIN", cookieOptions);
     redirect("/dashboard/admin");
   }
 
@@ -75,8 +73,10 @@ export async function loginAction(formData: FormData) {
   }
 
   if (hasApprovedDoctorProfile || user.role === "DOCTOR") {
+    cookieStore.set("activeProfile", "DOCTOR", cookieOptions);
     redirect("/dashboard/medico");
   }
 
+  cookieStore.set("activeProfile", "PATIENT", cookieOptions);
   redirect("/dashboard/paciente");
 }

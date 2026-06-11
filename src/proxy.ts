@@ -12,12 +12,12 @@ function redirectToHome(request: NextRequest) {
   return NextResponse.redirect(new URL("/", request.url));
 }
 
-function redirectToDashboard(request: NextRequest, role?: string) {
-  if (role === "ADMIN") {
+function redirectToDashboard(request: NextRequest, activeProfile?: string) {
+  if (activeProfile === "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard/admin", request.url));
   }
 
-  if (role === "DOCTOR") {
+  if (activeProfile === "DOCTOR") {
     return NextResponse.redirect(new URL("/dashboard/medico", request.url));
   }
 
@@ -31,6 +31,7 @@ function isPublicAuthRoute(pathname: string) {
 export function proxy(request: NextRequest) {
   const userId = request.cookies.get("userId")?.value;
   const userRole = request.cookies.get("userRole")?.value;
+  const activeProfile = request.cookies.get("activeProfile")?.value ?? userRole;
 
   const { pathname } = request.nextUrl;
 
@@ -49,7 +50,7 @@ export function proxy(request: NextRequest) {
   const isAppointmentRoute = pathname.startsWith("/agendar");
 
   if (isPublicAuthRoute(pathname) && isLoggedIn) {
-    return redirectToDashboard(request, userRole);
+    return redirectToDashboard(request, activeProfile);
   }
 
   if (
@@ -68,16 +69,16 @@ export function proxy(request: NextRequest) {
     return redirectToHome(request);
   }
 
-  if (isPatientRoute && userRole !== "PATIENT") {
-    return redirectToDashboard(request, userRole);
+  if (isPatientRoute && activeProfile !== "PATIENT") {
+    return redirectToDashboard(request, activeProfile);
   }
 
-  if (isDoctorRoute && userRole !== "DOCTOR") {
-    return redirectToDashboard(request, userRole);
+  if (isDoctorRoute && activeProfile !== "DOCTOR") {
+    return redirectToDashboard(request, activeProfile);
   }
 
-  if (isAppointmentRoute && userRole !== "PATIENT") {
-    return redirectToDashboard(request, userRole);
+  if (isAppointmentRoute && activeProfile !== "PATIENT") {
+    return redirectToDashboard(request, activeProfile);
   }
 
   return NextResponse.next();

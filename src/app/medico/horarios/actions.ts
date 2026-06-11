@@ -11,13 +11,18 @@ export async function deleteAvailability(formData: FormData) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
   }
 
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
+  }
+
   if (!availabilityId) {
-    throw new Error("Horário não informado.");
+    redirect("/medico/horarios");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -27,7 +32,7 @@ export async function deleteAvailability(formData: FormData) {
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
   }
 
   const availability = await prisma.availability.findFirst({
@@ -38,7 +43,7 @@ export async function deleteAvailability(formData: FormData) {
   });
 
   if (!availability) {
-    throw new Error("Horário não encontrado ou não pertence a este médico.");
+    redirect("/medico/horarios");
   }
 
   await prisma.availability.delete({
@@ -48,4 +53,5 @@ export async function deleteAvailability(formData: FormData) {
   });
 
   revalidatePath("/medico/horarios");
+  redirect("/medico/horarios");
 }

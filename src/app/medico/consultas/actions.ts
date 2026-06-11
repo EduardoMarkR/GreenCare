@@ -11,34 +11,26 @@ type AppointmentStatus =
   | "CANCELLED"
   | "COMPLETED";
 
-export async function updateAppointmentStatus(formData: FormData) {
+const allowedStatuses: AppointmentStatus[] = [
+  "PENDING",
+  "CONFIRMED",
+  "CANCELLED",
+  "COMPLETED",
+];
+
+async function getAuthenticatedDoctor() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
   }
 
-  const appointmentId = String(formData.get("appointmentId") ?? "");
-  const status = String(
-    formData.get("status") ?? ""
-  ) as AppointmentStatus;
-
-  if (!appointmentId || !status) {
-    throw new Error("Consulta e status são obrigatórios.");
-  }
-
-  const allowedStatuses: AppointmentStatus[] = [
-    "PENDING",
-    "CONFIRMED",
-    "CANCELLED",
-    "COMPLETED",
-  ];
-
-  if (!allowedStatuses.includes(status)) {
-    throw new Error("Status inválido.");
-  }
+  if (activeProfile !== "DOCTOR") {
+  redirect("/");
+}
 
   const doctor = await prisma.doctor.findUnique({
     where: {
@@ -47,7 +39,42 @@ export async function updateAppointmentStatus(formData: FormData) {
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
+  }
+
+  return doctor;
+}
+
+function validateMeetingUrl(url: string) {
+  if (!url) return null;
+
+  try {
+    const parsedUrl = new URL(url);
+
+    const allowedProtocols = ["https:"];
+
+    if (!allowedProtocols.includes(parsedUrl.protocol)) {
+      throw new Error("O link da teleconsulta precisa começar com https://.");
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    throw new Error("Link da teleconsulta inválido.");
+  }
+}
+
+export async function updateAppointmentStatus(formData: FormData) {
+  const doctor = await getAuthenticatedDoctor();
+
+  const appointmentId = String(formData.get("appointmentId") ?? "");
+  const status = String(formData.get("status") ?? "") as AppointmentStatus;
+
+  if (!appointmentId || !status) {
+    throw new Error("Consulta e status são obrigatórios.");
+  }
+
+  if (!allowedStatuses.includes(status)) {
+    throw new Error("Status inválido.");
   }
 
   const appointment = await prisma.appointment.findFirst({
@@ -58,9 +85,7 @@ export async function updateAppointmentStatus(formData: FormData) {
   });
 
   if (!appointment) {
-    throw new Error(
-      "Consulta não encontrada ou não pertence a este médico."
-    );
+    throw new Error("Consulta não encontrada ou não pertence a este médico.");
   }
 
   await prisma.appointment.update({
@@ -73,40 +98,23 @@ export async function updateAppointmentStatus(formData: FormData) {
   });
 
   revalidatePath("/medico/consultas");
+  revalidatePath("/medico/historico");
   revalidatePath("/dashboard/medico");
   revalidatePath("/dashboard/paciente");
 }
 
 export async function saveMeetingUrl(formData: FormData) {
-  const cookieStore = await cookies();
+  const doctor = await getAuthenticatedDoctor();
 
-  const userId = cookieStore.get("userId")?.value;
+  const appointmentId = String(formData.get("appointmentId") ?? "");
 
-  if (!userId) {
-    redirect("/login");
-  }
-
-  const appointmentId = String(
-    formData.get("appointmentId") ?? ""
-  );
-
-  const meetingUrl = String(
-    formData.get("meetingUrl") ?? ""
-  ).trim();
+  const meetingUrl = String(formData.get("meetingUrl") ?? "").trim();
 
   if (!appointmentId) {
     throw new Error("Consulta não informada.");
   }
 
-  const doctor = await prisma.doctor.findUnique({
-    where: {
-      userId,
-    },
-  });
-
-  if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
-  }
+  const safeMeetingUrl = validateMeetingUrl(meetingUrl);
 
   const appointment = await prisma.appointment.findFirst({
     where: {
@@ -116,9 +124,7 @@ export async function saveMeetingUrl(formData: FormData) {
   });
 
   if (!appointment) {
-    throw new Error(
-      "Consulta não encontrada ou não pertence a este médico."
-    );
+    throw new Error("Consulta não encontrada ou não pertence a este médico.");
   }
 
   await prisma.appointment.update({
@@ -126,11 +132,12 @@ export async function saveMeetingUrl(formData: FormData) {
       id: appointment.id,
     },
     data: {
-      meetingUrl: meetingUrl || null,
+      meetingUrl: safeMeetingUrl,
     },
   });
 
   revalidatePath("/medico/consultas");
+  revalidatePath("/medico/historico");
   revalidatePath("/dashboard/medico");
   revalidatePath("/dashboard/paciente");
 }

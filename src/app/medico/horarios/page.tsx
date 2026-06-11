@@ -13,13 +13,27 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-export default async function HorariosPage() {
+type HorariosPageProps = {
+  searchParams?: Promise<{
+    excluir?: string;
+  }>;
+};
+
+export default async function HorariosPage({ searchParams }: HorariosPageProps) {
+  const params = await searchParams;
+  const availabilityToDeleteId = params?.excluir;
+
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -28,12 +42,8 @@ export default async function HorariosPage() {
     },
   });
 
-  if (!doctor) {
-    redirect("/selecionar-perfil");
-  }
-
-  if (doctor.approvalStatus !== "APPROVED") {
-    redirect("/dashboard/paciente");
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
+    redirect("/");
   }
 
   const availabilities = await prisma.availability.findMany({
@@ -50,6 +60,12 @@ export default async function HorariosPage() {
     ],
   });
 
+  const availabilityToDelete = availabilityToDeleteId
+    ? availabilities.find(
+        (availability) => availability.id === availabilityToDeleteId
+      )
+    : null;
+
   return (
     <>
       <Navbar />
@@ -64,6 +80,49 @@ export default async function HorariosPage() {
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
+          {availabilityToDelete ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Confirmar exclusão de horário
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">
+                Tem certeza que deseja excluir o horário de{" "}
+                <strong>{formatDate(availabilityToDelete.date)}</strong>, das{" "}
+                <strong>{availabilityToDelete.startTime}</strong> às{" "}
+                <strong>{availabilityToDelete.endTime}</strong>?
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-red-700">
+                Essa ação não poderá ser desfeita.
+              </p>
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <form action={deleteAvailability}>
+                  <input
+                    type="hidden"
+                    name="availabilityId"
+                    value={availabilityToDelete.id}
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700"
+                  >
+                    Sim, excluir horário
+                  </button>
+                </form>
+
+                <Link
+                  href="/medico/horarios"
+                  className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] ring-1 ring-[#C6C6C6]/70 transition hover:bg-[#F3EFA1]"
+                >
+                  Cancelar
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/medico/horarios/novo"
@@ -126,20 +185,12 @@ export default async function HorariosPage() {
                       Editar
                     </Link>
 
-                    <form action={deleteAvailability}>
-                      <input
-                        type="hidden"
-                        name="availabilityId"
-                        value={availability.id}
-                      />
-
-                      <button
-                        type="submit"
-                        className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
-                      >
-                        Excluir horário
-                      </button>
-                    </form>
+                    <Link
+                      href={`/medico/horarios?excluir=${availability.id}`}
+                      className="rounded-full bg-red-100 px-4 py-2 text-center text-sm font-bold text-red-700 transition hover:bg-red-200"
+                    >
+                      Excluir horário
+                    </Link>
                   </div>
                 </div>
               </article>
