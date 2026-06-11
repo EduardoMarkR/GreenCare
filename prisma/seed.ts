@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -19,6 +20,9 @@ const UserRole = {
 async function main() {
   console.log("Iniciando seed...");
 
+  const defaultPassword = await bcrypt.hash("senha-temporaria", 10);
+  const patientPassword = await bcrypt.hash("123456", 10);
+
   await prisma.appointment.deleteMany();
   await prisma.availability.deleteMany();
   await prisma.doctor.deleteMany();
@@ -29,7 +33,7 @@ async function main() {
     data: {
       name: "Administrador GreenCare",
       email: "admin@greencare.com",
-      password: "senha-temporaria",
+      password: defaultPassword,
       role: UserRole.ADMIN,
     },
   });
@@ -38,7 +42,7 @@ async function main() {
     data: {
       name: "Dra. Ana Oliveira",
       email: "ana.oliveira@greencare.com",
-      password: "senha-temporaria",
+      password: defaultPassword,
       role: UserRole.DOCTOR,
       doctor: {
         create: {
@@ -49,6 +53,7 @@ async function main() {
           price: 250,
           telemedicine: true,
           approved: true,
+          approvalStatus: "APPROVED",
         },
       },
     },
@@ -61,7 +66,7 @@ async function main() {
     data: {
       name: "Dr. Carlos Santos",
       email: "carlos.santos@greencare.com",
-      password: "senha-temporaria",
+      password: defaultPassword,
       role: UserRole.DOCTOR,
       doctor: {
         create: {
@@ -72,6 +77,7 @@ async function main() {
           price: 300,
           telemedicine: true,
           approved: true,
+          approvalStatus: "APPROVED",
         },
       },
     },
@@ -84,7 +90,7 @@ async function main() {
     data: {
       name: "Dra. Mariana Costa",
       email: "mariana.costa@greencare.com",
-      password: "senha-temporaria",
+      password: defaultPassword,
       role: UserRole.DOCTOR,
       doctor: {
         create: {
@@ -95,6 +101,7 @@ async function main() {
           price: 220,
           telemedicine: true,
           approved: true,
+          approvalStatus: "APPROVED",
         },
       },
     },
@@ -107,7 +114,7 @@ async function main() {
     data: {
       name: "Paciente Teste",
       email: "paciente@greencare.com",
-      password: "123456",
+      password: patientPassword,
       role: UserRole.PATIENT,
       patient: {
         create: {
@@ -148,7 +155,12 @@ async function main() {
     });
   }
 
-  if (!patientUser.patient || !doctorUser1.doctor || !doctorUser2.doctor || !doctorUser3.doctor) {
+  if (
+    !patientUser.patient ||
+    !doctorUser1.doctor ||
+    !doctorUser2.doctor ||
+    !doctorUser3.doctor
+  ) {
     throw new Error("Erro ao criar dados relacionados do seed.");
   }
 

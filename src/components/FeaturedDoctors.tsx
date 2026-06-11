@@ -1,7 +1,22 @@
 import Link from "next/link";
 import DoctorCard from "./DoctorCard";
+import { prisma } from "@/lib/prisma";
 
-export default function FeaturedDoctors() {
+export default async function FeaturedDoctors() {
+  const doctors = await prisma.doctor.findMany({
+    where: {
+      approved: true,
+      approvalStatus: "APPROVED",
+    },
+    include: {
+      user: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 3,
+  });
+
   return (
     <section className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-6">
@@ -29,31 +44,33 @@ export default function FeaturedDoctors() {
           </Link>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <DoctorCard
-            id="demo-ana"
-            name="Dra. Ana Oliveira"
-            specialty="Neurologia"
-            location="São Paulo - SP"
-            price="Consulta a partir de R$ 250"
-          />
+        {doctors.length === 0 ? (
+          <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-[#F7F4E7] p-8">
+            <p className="text-xl font-extrabold text-[#08553F]">
+              Nenhum médico aprovado em destaque no momento.
+            </p>
 
-          <DoctorCard
-            id="demo-carlos"
-            name="Dr. Carlos Santos"
-            specialty="Psiquiatria"
-            location="Rio de Janeiro - RJ"
-            price="Consulta a partir de R$ 300"
-          />
-
-          <DoctorCard
-            id="demo-mariana"
-            name="Dra. Mariana Costa"
-            specialty="Clínica Geral"
-            location="Belo Horizonte - MG"
-            price="Consulta a partir de R$ 220"
-          />
-        </div>
+            <p className="mt-3 text-[#878787]">
+              Assim que novos profissionais forem aprovados, eles aparecerão
+              nesta área.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {doctors.map((doctor) => (
+              <DoctorCard
+                key={doctor.id}
+                id={doctor.id}
+                name={doctor.user.name}
+                specialty={doctor.specialty}
+                location={`CRM ${doctor.crm}/${doctor.crmUf}`}
+                price={`Consulta a partir de R$ ${Number(
+                  doctor.price
+                ).toFixed(2)}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

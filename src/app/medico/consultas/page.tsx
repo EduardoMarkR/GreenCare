@@ -14,6 +14,8 @@ type ConsultasMedicoPageProps = {
   }>;
 };
 
+type ActiveAppointmentStatus = "PENDING" | "CONFIRMED";
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
@@ -23,8 +25,6 @@ function formatDate(date: Date) {
 function getStatusLabel(status: string) {
   if (status === "PENDING") return "Pendente";
   if (status === "CONFIRMED") return "Confirmada";
-  if (status === "CANCELLED") return "Cancelada";
-  if (status === "COMPLETED") return "Concluída";
 
   return status;
 }
@@ -32,8 +32,6 @@ function getStatusLabel(status: string) {
 function getStatusClass(status: string) {
   if (status === "PENDING") return "bg-[#F3EFA1] text-[#08553F]";
   if (status === "CONFIRMED") return "bg-[#00CF7B]/15 text-[#08553F]";
-  if (status === "CANCELLED") return "bg-red-100 text-red-700";
-  if (status === "COMPLETED") return "bg-blue-100 text-blue-700";
 
   return "bg-gray-100 text-gray-800";
 }
@@ -77,13 +75,7 @@ export default async function ConsultasMedicoPage({
   const selectedStatus = params?.status ?? "ALL";
   const searchTerm = params?.busca?.trim() ?? "";
 
-  const validStatuses = [
-    "ALL",
-    "PENDING",
-    "CONFIRMED",
-    "CANCELLED",
-    "COMPLETED",
-  ];
+  const validStatuses = ["ALL", "PENDING", "CONFIRMED"];
 
   const statusFilter = validStatuses.includes(selectedStatus)
     ? selectedStatus
@@ -99,59 +91,56 @@ export default async function ConsultasMedicoPage({
     redirect("/login");
   }
 
+  const appointmentWhere = {
+    doctorId: doctor.id,
+    status:
+      statusFilter !== "ALL"
+        ? (statusFilter as ActiveAppointmentStatus)
+        : {
+            in: ["PENDING", "CONFIRMED"] as ActiveAppointmentStatus[],
+          },
+    ...(searchTerm
+      ? {
+          OR: [
+            {
+              notes: {
+                contains: searchTerm,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              patient: {
+                user: {
+                  name: {
+                    contains: searchTerm,
+                    mode: "insensitive" as const,
+                  },
+                },
+              },
+            },
+            {
+              patient: {
+                user: {
+                  email: {
+                    contains: searchTerm,
+                    mode: "insensitive" as const,
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
   const [
     appointments,
-    totalAppointments,
+    activeAppointments,
     pendingAppointments,
     confirmedAppointments,
-    cancelledAppointments,
-    completedAppointments,
   ] = await Promise.all([
     prisma.appointment.findMany({
-      where: {
-        doctorId: doctor.id,
-        ...(statusFilter !== "ALL"
-          ? {
-              status: statusFilter as
-                | "PENDING"
-                | "CONFIRMED"
-                | "CANCELLED"
-                | "COMPLETED",
-            }
-          : {}),
-        ...(searchTerm
-          ? {
-              OR: [
-                {
-                  notes: {
-                    contains: searchTerm,
-                    mode: "insensitive",
-                  },
-                },
-                {
-                  patient: {
-                    user: {
-                      name: {
-                        contains: searchTerm,
-                        mode: "insensitive",
-                      },
-                    },
-                  },
-                },
-                {
-                  patient: {
-                    user: {
-                      email: {
-                        contains: searchTerm,
-                        mode: "insensitive",
-                      },
-                    },
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
+      where: appointmentWhere,
       include: {
         patient: {
           include: {
@@ -171,6 +160,9 @@ export default async function ConsultasMedicoPage({
     prisma.appointment.count({
       where: {
         doctorId: doctor.id,
+        status: {
+          in: ["PENDING", "CONFIRMED"],
+        },
       },
     }),
     prisma.appointment.count({
@@ -185,18 +177,6 @@ export default async function ConsultasMedicoPage({
         status: "CONFIRMED",
       },
     }),
-    prisma.appointment.count({
-      where: {
-        doctorId: doctor.id,
-        status: "CANCELLED",
-      },
-    }),
-    prisma.appointment.count({
-      where: {
-        doctorId: doctor.id,
-        status: "COMPLETED",
-      },
-    }),
   ]);
 
   return (
@@ -205,9 +185,9 @@ export default async function ConsultasMedicoPage({
 
       <main className="min-h-screen bg-[#F7F4E7]">
         <CannaPageHero
-          badge="Consultas médicas"
+          badge="Consultas ativas"
           title="Minhas consultas"
-          description="Acompanhe consultas, filtre atendimentos pendentes, altere status e visualize documentos enviados pelos pacientes."
+          description="Acompanhe consultas pendentes e confirmadas. Consultas concluídas ou canceladas ficam no histórico."
           backHref="/dashboard/medico"
           backLabel="Voltar ao painel"
         />
@@ -227,41 +207,40 @@ export default async function ConsultasMedicoPage({
             >
               Perfil profissional
             </Link>
+
+            <Link
+              href="/medico/historico"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Histórico
+            </Link>
           </div>
 
-          <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">Total</p>
+              <p className="text-sm font-bold text-[#878787]">
+                Ativas
+              </p>
               <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
-                {totalAppointments}
+                {activeAppointments}
               </p>
             </div>
 
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">Pendentes</p>
+              <p className="text-sm font-bold text-[#878787]">
+                Pendentes
+              </p>
               <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
                 {pendingAppointments}
               </p>
             </div>
 
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">Confirmadas</p>
+              <p className="text-sm font-bold text-[#878787]">
+                Confirmadas
+              </p>
               <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
                 {confirmedAppointments}
-              </p>
-            </div>
-
-            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">Canceladas</p>
-              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
-                {cancelledAppointments}
-              </p>
-            </div>
-
-            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">Concluídas</p>
-              <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
-                {completedAppointments}
               </p>
             </div>
           </div>
@@ -330,7 +309,7 @@ export default async function ConsultasMedicoPage({
                 href={getFilterHref("ALL", searchTerm)}
                 className={getFilterClass(statusFilter === "ALL")}
               >
-                Todas ({totalAppointments})
+                Todas ativas ({activeAppointments})
               </Link>
 
               <Link
@@ -348,17 +327,10 @@ export default async function ConsultasMedicoPage({
               </Link>
 
               <Link
-                href={getFilterHref("CANCELLED", searchTerm)}
-                className={getFilterClass(statusFilter === "CANCELLED")}
+                href="/medico/historico"
+                className="rounded-full border border-[#08553F]/20 bg-[#F3EFA1] px-5 py-2 text-sm font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
               >
-                Canceladas ({cancelledAppointments})
-              </Link>
-
-              <Link
-                href={getFilterHref("COMPLETED", searchTerm)}
-                className={getFilterClass(statusFilter === "COMPLETED")}
-              >
-                Concluídas ({completedAppointments})
+                Ver histórico →
               </Link>
             </div>
           </div>
@@ -367,12 +339,19 @@ export default async function ConsultasMedicoPage({
             {appointments.length === 0 && (
               <div className="rounded-[2rem] bg-white p-6 shadow-sm">
                 <p className="font-bold text-[#08553F]">
-                  Nenhuma consulta encontrada.
+                  Nenhuma consulta ativa encontrada.
                 </p>
 
                 <p className="mt-2 text-sm text-[#878787]">
                   Ajuste os filtros ou aguarde novos agendamentos.
                 </p>
+
+                <Link
+                  href="/medico/historico"
+                  className="mt-5 inline-flex rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Ver histórico de consultas
+                </Link>
               </div>
             )}
 
@@ -451,94 +430,87 @@ export default async function ConsultasMedicoPage({
                           </form>
                         )}
 
-                        {appointment.status !== "CANCELLED" && (
-                          <form action={updateAppointmentStatus}>
-                            <input
-                              type="hidden"
-                              name="appointmentId"
-                              value={appointment.id}
-                            />
+                        <form action={updateAppointmentStatus}>
+                          <input
+                            type="hidden"
+                            name="appointmentId"
+                            value={appointment.id}
+                          />
 
-                            <input
-                              type="hidden"
-                              name="status"
-                              value="CANCELLED"
-                            />
+                          <input
+                            type="hidden"
+                            name="status"
+                            value="CANCELLED"
+                          />
 
-                            <button
-                              type="submit"
-                              className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
-                            >
-                              Cancelar
-                            </button>
-                          </form>
-                        )}
+                          <button
+                            type="submit"
+                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
+                          >
+                            Cancelar
+                          </button>
+                        </form>
 
-                        {appointment.status !== "COMPLETED" && (
-                          <form action={updateAppointmentStatus}>
-                            <input
-                              type="hidden"
-                              name="appointmentId"
-                              value={appointment.id}
-                            />
+                        <form action={updateAppointmentStatus}>
+                          <input
+                            type="hidden"
+                            name="appointmentId"
+                            value={appointment.id}
+                          />
 
-                            <input
-                              type="hidden"
-                              name="status"
-                              value="COMPLETED"
-                            />
+                          <input
+                            type="hidden"
+                            name="status"
+                            value="COMPLETED"
+                          />
 
-                            <button
-                              type="submit"
-                              className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-200"
-                            >
-                              Concluir
-                            </button>
-                          </form>
-                        )}
+                          <button
+                            type="submit"
+                            className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-200"
+                          >
+                            Concluir
+                          </button>
+                        </form>
                       </div>
                     </div>
                   </div>
 
-                  {(appointment.status === "CONFIRMED" ||
-                    appointment.status === "PENDING") && (
-                    <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
-                      <h3 className="font-extrabold text-[#08553F]">
-                        Link da teleconsulta
-                      </h3>
+                  <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                    <h3 className="font-extrabold text-[#08553F]">
+                      Link da teleconsulta
+                    </h3>
 
-                      <p className="mt-2 text-sm text-[#878787]">
-                        Cole aqui o link do Google Meet, Zoom, Teams ou outra
-                        plataforma de atendimento online.
-                      </p>
+                    <p className="mt-2 text-sm text-[#878787]">
+                      Cole aqui o link do Google Meet, Zoom, Teams ou outra
+                      plataforma de atendimento online.
+                    </p>
 
-                      <form
-                        action={saveMeetingUrl}
-                        className="mt-4 flex flex-col gap-3 md:flex-row"
+                    <form
+                      action={saveMeetingUrl}
+                      className="mt-4 flex flex-col gap-3 md:flex-row"
+                    >
+                      <input
+                        type="hidden"
+                        name="appointmentId"
+                        value={appointment.id}
+                      />
+
+                      <input
+                        type="url"
+                        name="meetingUrl"
+                        defaultValue={appointment.meetingUrl ?? ""}
+                        placeholder="https://meet.google.com/..."
+                        className="min-h-12 flex-1 rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B]"
+                      />
+
+                      <button
+                        type="submit"
+                        className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
                       >
-                        <input
-                          type="hidden"
-                          name="appointmentId"
-                          value={appointment.id}
-                        />
-
-                        <input
-                          type="url"
-                          name="meetingUrl"
-                          defaultValue={appointment.meetingUrl ?? ""}
-                          placeholder="https://meet.google.com/..."
-                          className="min-h-12 flex-1 rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B]"
-                        />
-
-                        <button
-                          type="submit"
-                          className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                        >
-                          Salvar link
-                        </button>
-                      </form>
-                    </div>
-                  )}
+                        Salvar link
+                      </button>
+                    </form>
+                  </div>
 
                   <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
                     <h3 className="font-extrabold text-[#08553F]">

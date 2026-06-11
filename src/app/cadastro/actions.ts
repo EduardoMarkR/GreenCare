@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
@@ -22,11 +23,13 @@ export async function createPatientAccount(formData: FormData) {
     throw new Error("Já existe uma conta cadastrada com este e-mail.");
   }
 
+  const hashedPassword = await bcrypt.hash(password, 10);
+
   await prisma.user.create({
     data: {
       name,
       email,
-      password,
+      password: hashedPassword,
       role: "PATIENT",
       patient: {
         create: {},
