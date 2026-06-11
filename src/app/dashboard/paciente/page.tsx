@@ -43,10 +43,14 @@ export default async function DashboardPacientePage() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId || userRole !== "PATIENT") {
+  if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "PATIENT") {
+    redirect("/");
   }
 
   const patient = await prisma.patient.findUnique({
@@ -55,7 +59,7 @@ export default async function DashboardPacientePage() {
   });
 
   if (!patient) {
-    throw new Error("Paciente não encontrado.");
+    redirect("/login");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -83,15 +87,23 @@ export default async function DashboardPacientePage() {
   const proximasConsultas = await prisma.appointment.findMany({
     where: { patientId: patient.id },
     include: {
+      availability: true,
       doctor: {
         include: {
           user: true,
         },
       },
     },
-    orderBy: {
-      date: "asc",
-    },
+    orderBy: [
+      {
+        date: "asc",
+      },
+      {
+        availability: {
+          startTime: "asc",
+        },
+      },
+    ],
     take: 5,
   });
 
@@ -335,6 +347,17 @@ export default async function DashboardPacientePage() {
                       <p className="mt-2 text-sm font-semibold text-[#08553F]">
                         {formatDate(appointment.date)}
                       </p>
+
+                      {appointment.availability ? (
+                        <p className="mt-1 text-sm font-semibold text-[#08553F]">
+                          {appointment.availability.startTime} às{" "}
+                          {appointment.availability.endTime}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm font-semibold text-[#878787]">
+                          Horário não informado
+                        </p>
+                      )}
 
                       {appointment.notes && (
                         <p className="mt-2 text-sm text-[#878787]">

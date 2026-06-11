@@ -6,15 +6,23 @@ import { prisma } from "@/lib/prisma";
 
 export async function createAppointment(formData: FormData) {
   const availabilityId = String(formData.get("availabilityId") ?? "");
-  const notes = String(formData.get("notes") ?? "");
+  const notes = String(formData.get("notes") ?? "").trim();
 
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId || userRole !== "PATIENT") {
+  if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "PATIENT") {
+    redirect("/");
+  }
+
+  if (!availabilityId) {
+    redirect("/medicos");
   }
 
   const patient = await prisma.patient.findUnique({
@@ -24,30 +32,67 @@ export async function createAppointment(formData: FormData) {
   });
 
   if (!patient) {
-    throw new Error("Paciente não encontrado.");
+    redirect("/login");
   }
 
   const availability = await prisma.availability.findUnique({
     where: {
       id: availabilityId,
     },
+    include: {
+      doctor: true,
+    },
   });
 
-  if (!availability) {
-    throw new Error("Horário não encontrado.");
+  if (!availability || availability.doctor.approvalStatus !== "APPROVED") {
+    redirect("/medicos");
   }
 
-  const existingActiveAppointment = await prisma.appointment.findFirst({
+  const existingAppointmentForAvailability = await prisma.appointment.findFirst({
     where: {
       availabilityId: availability.id,
       status: {
-        in: ["PENDING", "CONFIRMED", "COMPLETED"],
+        in: ["PENDING", "CONFIRMED"],
       },
     },
   });
 
-  if (existingActiveAppointment) {
-    throw new Error("Este horário já foi agendado.");
+  if (existingAppointmentForAvailability) {
+    redirect(
+      `/agendar/${availability.id}?erro=Este horário já foi agendado por outro paciente.`
+    );
+  }
+
+  const conflictingPatientAppointment = await prisma.appointment.findFirst({
+    where: {
+      patientId: patient.id,
+      date: availability.date,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
+      availability: {
+        startTime: {
+          lt: availability.endTime,
+        },
+        endTime: {
+          gt: availability.startTime,
+        },
+      },
+    },
+    include: {
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+      availability: true,
+    },
+  });
+
+  if (conflictingPatientAppointment) {
+    redirect(
+      `/agendar/${availability.id}?erro=Você já possui uma consulta nesse mesmo dia e horário.`
+    );
   }
 
   await prisma.appointment.create({

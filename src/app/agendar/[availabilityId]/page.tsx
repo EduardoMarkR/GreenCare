@@ -10,6 +10,9 @@ type Props = {
   params: Promise<{
     availabilityId: string;
   }>;
+  searchParams?: Promise<{
+    erro?: string;
+  }>;
 };
 
 function formatDate(date: Date) {
@@ -28,14 +31,23 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-export default async function AgendarPage({ params }: Props) {
+export default async function AgendarPage({ params, searchParams }: Props) {
   const { availabilityId } = await params;
+  const query = await searchParams;
+  const erro = query?.erro;
 
   const availability = await prisma.availability.findUnique({
     where: {
       id: availabilityId,
     },
     include: {
+      appointments: {
+        where: {
+          status: {
+            in: ["PENDING", "CONFIRMED"],
+          },
+        },
+      },
       doctor: {
         include: {
           user: true,
@@ -47,6 +59,10 @@ export default async function AgendarPage({ params }: Props) {
   if (!availability) {
     notFound();
   }
+
+  const isAlreadyBooked = availability.appointments.length > 0;
+  const isDoctorApproved = availability.doctor.approvalStatus === "APPROVED";
+  const canBook = !isAlreadyBooked && isDoctorApproved;
 
   return (
     <>
@@ -62,6 +78,49 @@ export default async function AgendarPage({ params }: Props) {
         />
 
         <section className="mx-auto max-w-6xl px-6 py-12">
+          {erro ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Não foi possível agendar
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">{erro}</p>
+            </div>
+          ) : null}
+
+          {!isDoctorApproved ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Médico indisponível
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">
+                Este profissional ainda não está aprovado para receber
+                agendamentos.
+              </p>
+            </div>
+          ) : null}
+
+          {isAlreadyBooked ? (
+            <div className="mb-8 rounded-[2rem] border border-[#F3EFA1] bg-[#F3EFA1]/40 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-[#08553F]">
+                Horário indisponível
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-[#08553F]">
+                Este horário já foi reservado. Escolha outro horário disponível
+                no perfil do médico.
+              </p>
+
+              <Link
+                href={`/medicos/${availability.doctor.id}`}
+                className="mt-5 inline-flex rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+              >
+                Ver outros horários
+              </Link>
+            </div>
+          ) : null}
+
           <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
             <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-[#C6C6C6]/60">
               <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
@@ -92,15 +151,19 @@ export default async function AgendarPage({ params }: Props) {
                       name="notes"
                       placeholder="Conte brevemente o motivo da consulta"
                       rows={5}
-                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
+                      disabled={!canBook}
+                      className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full rounded-2xl bg-[#08553F] px-6 py-4 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                    disabled={!canBook}
+                    className="w-full rounded-2xl bg-[#08553F] px-6 py-4 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F] disabled:cursor-not-allowed disabled:bg-[#878787] disabled:text-white"
                   >
-                    Confirmar agendamento
+                    {canBook
+                      ? "Confirmar agendamento"
+                      : "Agendamento indisponível"}
                   </button>
                 </form>
               </div>
