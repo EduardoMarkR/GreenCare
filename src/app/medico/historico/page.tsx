@@ -60,6 +60,7 @@ export default async function HistoricoMedicoPage() {
     include: {
       availability: true,
       medicalRecord: true,
+      prescription: true,
       documents: {
         orderBy: {
           createdAt: "desc",
@@ -91,7 +92,7 @@ export default async function HistoricoMedicoPage() {
         <CannaPageHero
           badge="Histórico"
           title="Histórico de consultas"
-          description="Consulte atendimentos encerrados, documentos vinculados e prontuários em PDF."
+          description="Consulte atendimentos encerrados, documentos vinculados, prontuários e receitas em PDF."
           backHref="/dashboard/medico"
           backLabel="Voltar ao painel"
         />
@@ -172,6 +173,15 @@ export default async function HistoricoMedicoPage() {
                             : "Criar prontuário"}
                         </Link>
 
+                        <Link
+                          href={`/medico/receita/${appointment.id}`}
+                          className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
+                        >
+                          {appointment.prescription
+                            ? "Editar receita"
+                            : "Criar receita"}
+                        </Link>
+
                         {appointment.medicalRecord && (
                           <a
                             href={`/api/prontuario/${appointment.id}`}
@@ -179,14 +189,14 @@ export default async function HistoricoMedicoPage() {
                             rel="noreferrer"
                             className="inline-flex w-fit rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
                           >
-                            Abrir PDF →
+                            PDF prontuário →
                           </a>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
                       <h3 className="font-extrabold text-[#08553F]">
                         Prontuário
@@ -206,6 +216,23 @@ export default async function HistoricoMedicoPage() {
 
                     <div className="rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
                       <h3 className="font-extrabold text-[#08553F]">
+                        Receita médica
+                      </h3>
+
+                      {appointment.prescription ? (
+                        <p className="mt-2 text-sm leading-6 text-[#878787]">
+                          Receita registrada. O PDF será liberado na próxima
+                          etapa.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-[#878787]">
+                          Nenhuma receita registrada para esta consulta.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                      <h3 className="font-extrabold text-[#08553F]">
                         Documentos
                       </h3>
 
@@ -218,7 +245,7 @@ export default async function HistoricoMedicoPage() {
                           {appointment.documents.map((document) => (
                             <div
                               key={document.id}
-                              className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                              className="flex flex-col gap-3 rounded-2xl bg-white p-4"
                             >
                               <div>
                                 <p className="font-bold text-[#08553F]">

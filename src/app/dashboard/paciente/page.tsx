@@ -102,6 +102,7 @@ export default async function DashboardPacientePage({
     include: {
       availability: true,
       medicalRecord: true,
+      prescription: true,
       doctor: {
         include: {
           user: true,
@@ -385,7 +386,8 @@ export default async function DashboardPacientePage({
                 </h2>
 
                 <p className="mt-2 text-[#878787]">
-                  Veja suas próximas consultas, histórico e prontuários liberados.
+                  Veja suas próximas consultas, histórico, prontuários e receitas
+                  liberadas.
                 </p>
               </div>
 
@@ -468,24 +470,42 @@ export default async function DashboardPacientePage({
                           </div>
                         )}
 
-                      {appointment.status === "COMPLETED" && appointment.medicalRecord && (
+                      {(appointment.status === "COMPLETED" &&
+                        (appointment.medicalRecord ||
+                          appointment.prescription)) && (
                         <div className="mt-5 rounded-2xl border border-[#C6C6C6]/60 bg-white p-4">
                           <p className="font-extrabold text-[#08553F]">
-                            Prontuário da consulta
+                            Documentos da consulta
                           </p>
 
                           <p className="mt-2 text-sm text-[#878787]">
-                            O prontuário desta consulta está disponível em PDF.
+                            Os documentos desta consulta estão disponíveis em
+                            PDF.
                           </p>
 
-                          <a
-                            href={`/api/prontuario/${appointment.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-4 inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                          >
-                            Abrir prontuário em PDF →
-                          </a>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {appointment.medicalRecord && (
+                              <a
+                                href={`/api/prontuario/${appointment.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                              >
+                                Abrir prontuário PDF →
+                              </a>
+                            )}
+
+                            {appointment.prescription && (
+                              <a
+                                href={`/api/receita/${appointment.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                              >
+                                Abrir receita PDF →
+                              </a>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
