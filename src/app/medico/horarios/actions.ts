@@ -40,10 +40,19 @@ export async function deleteAvailability(formData: FormData) {
       id: availabilityId,
       doctorId: doctor.id,
     },
+    include: {
+      appointments: true,
+    },
   });
 
   if (!availability) {
     redirect("/medico/horarios");
+  }
+
+  if (availability.appointments.length > 0) {
+    redirect(
+      "/medico/horarios?erro=Não é possível excluir um horário que já possui consulta vinculada."
+    );
   }
 
   await prisma.availability.delete({

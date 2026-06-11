@@ -16,12 +16,14 @@ function formatDate(date: Date) {
 type HorariosPageProps = {
   searchParams?: Promise<{
     excluir?: string;
+    erro?: string;
   }>;
 };
 
 export default async function HorariosPage({ searchParams }: HorariosPageProps) {
   const params = await searchParams;
   const availabilityToDeleteId = params?.excluir;
+  const erro = params?.erro;
 
   const cookieStore = await cookies();
 
@@ -80,6 +82,16 @@ export default async function HorariosPage({ searchParams }: HorariosPageProps) 
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
+          {erro ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Não foi possível concluir a ação
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">{erro}</p>
+            </div>
+          ) : null}
+
           {availabilityToDelete ? (
             <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
               <p className="text-xl font-extrabold text-red-700">

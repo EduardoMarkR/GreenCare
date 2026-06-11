@@ -66,9 +66,14 @@ export default async function ConsultasMedicoPage({
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const params = await searchParams;
@@ -88,7 +93,7 @@ export default async function ConsultasMedicoPage({
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
   }
 
   const appointmentWhere = {
@@ -142,6 +147,7 @@ export default async function ConsultasMedicoPage({
     prisma.appointment.findMany({
       where: appointmentWhere,
       include: {
+        availability: true,
         patient: {
           include: {
             user: true,
@@ -153,9 +159,16 @@ export default async function ConsultasMedicoPage({
           },
         },
       },
-      orderBy: {
-        date: "asc",
-      },
+      orderBy: [
+        {
+          date: "asc",
+        },
+        {
+          availability: {
+            startTime: "asc",
+          },
+        },
+      ],
     }),
     prisma.appointment.count({
       where: {
@@ -218,27 +231,21 @@ export default async function ConsultasMedicoPage({
 
           <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">
-                Ativas
-              </p>
+              <p className="text-sm font-bold text-[#878787]">Ativas</p>
               <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
                 {activeAppointments}
               </p>
             </div>
 
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">
-                Pendentes
-              </p>
+              <p className="text-sm font-bold text-[#878787]">Pendentes</p>
               <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
                 {pendingAppointments}
               </p>
             </div>
 
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold text-[#878787]">
-                Confirmadas
-              </p>
+              <p className="text-sm font-bold text-[#878787]">Confirmadas</p>
               <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
                 {confirmedAppointments}
               </p>
@@ -372,6 +379,17 @@ export default async function ConsultasMedicoPage({
                       <p className="mt-2 text-sm font-bold text-[#08553F]">
                         {formatDate(appointment.date)}
                       </p>
+
+                      {appointment.availability ? (
+                        <p className="mt-1 text-sm font-bold text-[#08553F]">
+                          {appointment.availability.startTime} às{" "}
+                          {appointment.availability.endTime}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm font-bold text-[#878787]">
+                          Horário não informado
+                        </p>
+                      )}
 
                       {appointment.notes && (
                         <p className="mt-3 text-sm text-[#878787]">
