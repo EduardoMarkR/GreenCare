@@ -46,18 +46,22 @@ export async function createAvailability(formData: FormData) {
 
   const availabilityDate = new Date(`${date}T12:00:00`);
 
-  const existingAvailability = await prisma.availability.findFirst({
+  const conflictingAvailability = await prisma.availability.findFirst({
     where: {
       doctorId: doctor.id,
       date: availabilityDate,
-      startTime,
-      endTime,
+      startTime: {
+        lt: endTime,
+      },
+      endTime: {
+        gt: startTime,
+      },
     },
   });
 
-  if (existingAvailability) {
+  if (conflictingAvailability) {
     redirect(
-      "/medico/horarios/novo?erro=Você já cadastrou esse horário para esta data."
+      "/medico/horarios/novo?erro=Já existe um horário cadastrado que conflita com esse intervalo."
     );
   }
 
