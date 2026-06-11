@@ -11,10 +11,14 @@ type ConsultasMedicoPageProps = {
   searchParams?: Promise<{
     status?: string;
     busca?: string;
+    erro?: string;
+    acao?: string;
+    consulta?: string;
   }>;
 };
 
 type ActiveAppointmentStatus = "PENDING" | "CONFIRMED";
+type SensitiveAction = "CANCELLED" | "COMPLETED";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -25,6 +29,8 @@ function formatDate(date: Date) {
 function getStatusLabel(status: string) {
   if (status === "PENDING") return "Pendente";
   if (status === "CONFIRMED") return "Confirmada";
+  if (status === "CANCELLED") return "Cancelada";
+  if (status === "COMPLETED") return "Concluída";
 
   return status;
 }
@@ -32,6 +38,8 @@ function getStatusLabel(status: string) {
 function getStatusClass(status: string) {
   if (status === "PENDING") return "bg-[#F3EFA1] text-[#08553F]";
   if (status === "CONFIRMED") return "bg-[#00CF7B]/15 text-[#08553F]";
+  if (status === "CANCELLED") return "bg-red-100 text-red-700";
+  if (status === "COMPLETED") return "bg-blue-100 text-blue-700";
 
   return "bg-gray-100 text-gray-800";
 }
@@ -60,6 +68,28 @@ function getFilterHref(status: string, searchTerm: string) {
     : "/medico/consultas";
 }
 
+function getConfirmationHref(
+  appointmentId: string,
+  action: SensitiveAction,
+  statusFilter: string,
+  searchTerm: string
+) {
+  const params = new URLSearchParams();
+
+  params.set("acao", action);
+  params.set("consulta", appointmentId);
+
+  if (statusFilter !== "ALL") {
+    params.set("status", statusFilter);
+  }
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  return `/medico/consultas?${params.toString()}`;
+}
+
 export default async function ConsultasMedicoPage({
   searchParams,
 }: ConsultasMedicoPageProps) {
@@ -79,6 +109,9 @@ export default async function ConsultasMedicoPage({
   const params = await searchParams;
   const selectedStatus = params?.status ?? "ALL";
   const searchTerm = params?.busca?.trim() ?? "";
+  const erro = params?.erro;
+  const selectedAction = params?.acao as SensitiveAction | undefined;
+  const selectedAppointmentId = params?.consulta;
 
   const validStatuses = ["ALL", "PENDING", "CONFIRMED"];
 
@@ -192,6 +225,19 @@ export default async function ConsultasMedicoPage({
     }),
   ]);
 
+  const appointmentToConfirm =
+    selectedAppointmentId &&
+    (selectedAction === "CANCELLED" || selectedAction === "COMPLETED")
+      ? appointments.find((appointment) => appointment.id === selectedAppointmentId)
+      : null;
+
+  const actionLabel =
+    selectedAction === "CANCELLED"
+      ? "cancelar"
+      : selectedAction === "COMPLETED"
+        ? "concluir"
+        : "";
+
   return (
     <>
       <Navbar />
@@ -206,6 +252,69 @@ export default async function ConsultasMedicoPage({
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
+          {erro ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Não foi possível concluir a ação
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">{erro}</p>
+            </div>
+          ) : null}
+
+          {appointmentToConfirm ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Confirmar alteração da consulta
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">
+                Tem certeza que deseja {actionLabel} a consulta de{" "}
+                <strong>{appointmentToConfirm.patient.user.name}</strong> em{" "}
+                <strong>{formatDate(appointmentToConfirm.date)}</strong>
+                {appointmentToConfirm.availability ? (
+                  <>
+                    , das{" "}
+                    <strong>{appointmentToConfirm.availability.startTime}</strong>{" "}
+                    às{" "}
+                    <strong>{appointmentToConfirm.availability.endTime}</strong>
+                  </>
+                ) : null}
+                ?
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-red-700">
+                Essa ação moverá a consulta para o histórico.
+              </p>
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <form action={updateAppointmentStatus}>
+                  <input
+                    type="hidden"
+                    name="appointmentId"
+                    value={appointmentToConfirm.id}
+                  />
+
+                  <input type="hidden" name="status" value={selectedAction} />
+
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700"
+                  >
+                    Sim, {actionLabel} consulta
+                  </button>
+                </form>
+
+                <Link
+                  href={getFilterHref(statusFilter, searchTerm)}
+                  className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] ring-1 ring-[#C6C6C6]/70 transition hover:bg-[#F3EFA1]"
+                >
+                  Cancelar
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/medico/horarios"
@@ -448,47 +557,29 @@ export default async function ConsultasMedicoPage({
                           </form>
                         )}
 
-                        <form action={updateAppointmentStatus}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={appointment.id}
-                          />
+                        <Link
+                          href={getConfirmationHref(
+                            appointment.id,
+                            "CANCELLED",
+                            statusFilter,
+                            searchTerm
+                          )}
+                          className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
+                        >
+                          Cancelar
+                        </Link>
 
-                          <input
-                            type="hidden"
-                            name="status"
-                            value="CANCELLED"
-                          />
-
-                          <button
-                            type="submit"
-                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
-                          >
-                            Cancelar
-                          </button>
-                        </form>
-
-                        <form action={updateAppointmentStatus}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={appointment.id}
-                          />
-
-                          <input
-                            type="hidden"
-                            name="status"
-                            value="COMPLETED"
-                          />
-
-                          <button
-                            type="submit"
-                            className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-200"
-                          >
-                            Concluir
-                          </button>
-                        </form>
+                        <Link
+                          href={getConfirmationHref(
+                            appointment.id,
+                            "COMPLETED",
+                            statusFilter,
+                            searchTerm
+                          )}
+                          className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-200"
+                        >
+                          Concluir
+                        </Link>
                       </div>
                     </div>
                   </div>

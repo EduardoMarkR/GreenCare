@@ -29,8 +29,8 @@ async function getAuthenticatedDoctor() {
   }
 
   if (activeProfile !== "DOCTOR") {
-  redirect("/");
-}
+    redirect("/");
+  }
 
   const doctor = await prisma.doctor.findUnique({
     where: {
@@ -51,15 +51,15 @@ function validateMeetingUrl(url: string) {
   try {
     const parsedUrl = new URL(url);
 
-    const allowedProtocols = ["https:"];
-
-    if (!allowedProtocols.includes(parsedUrl.protocol)) {
-      throw new Error("O link da teleconsulta precisa começar com https://.");
+    if (parsedUrl.protocol !== "https:") {
+      redirect(
+        "/medico/consultas?erro=O link da teleconsulta precisa começar com https://."
+      );
     }
 
     return parsedUrl.toString();
   } catch {
-    throw new Error("Link da teleconsulta inválido.");
+    redirect("/medico/consultas?erro=Link da teleconsulta inválido.");
   }
 }
 
@@ -70,11 +70,11 @@ export async function updateAppointmentStatus(formData: FormData) {
   const status = String(formData.get("status") ?? "") as AppointmentStatus;
 
   if (!appointmentId || !status) {
-    throw new Error("Consulta e status são obrigatórios.");
+    redirect("/medico/consultas?erro=Consulta e status são obrigatórios.");
   }
 
   if (!allowedStatuses.includes(status)) {
-    throw new Error("Status inválido.");
+    redirect("/medico/consultas?erro=Status inválido.");
   }
 
   const appointment = await prisma.appointment.findFirst({
@@ -85,7 +85,19 @@ export async function updateAppointmentStatus(formData: FormData) {
   });
 
   if (!appointment) {
-    throw new Error("Consulta não encontrada ou não pertence a este médico.");
+    redirect(
+      "/medico/consultas?erro=Consulta não encontrada ou não pertence a este médico."
+    );
+  }
+
+  if (appointment.status === "COMPLETED" || appointment.status === "CANCELLED") {
+    redirect(
+      "/medico/consultas?erro=Essa consulta já está encerrada e não pode ser alterada."
+    );
+  }
+
+  if (appointment.status === status) {
+    redirect("/medico/consultas");
   }
 
   await prisma.appointment.update({
@@ -101,17 +113,18 @@ export async function updateAppointmentStatus(formData: FormData) {
   revalidatePath("/medico/historico");
   revalidatePath("/dashboard/medico");
   revalidatePath("/dashboard/paciente");
+
+  redirect("/medico/consultas");
 }
 
 export async function saveMeetingUrl(formData: FormData) {
   const doctor = await getAuthenticatedDoctor();
 
   const appointmentId = String(formData.get("appointmentId") ?? "");
-
   const meetingUrl = String(formData.get("meetingUrl") ?? "").trim();
 
   if (!appointmentId) {
-    throw new Error("Consulta não informada.");
+    redirect("/medico/consultas?erro=Consulta não informada.");
   }
 
   const safeMeetingUrl = validateMeetingUrl(meetingUrl);
@@ -124,7 +137,15 @@ export async function saveMeetingUrl(formData: FormData) {
   });
 
   if (!appointment) {
-    throw new Error("Consulta não encontrada ou não pertence a este médico.");
+    redirect(
+      "/medico/consultas?erro=Consulta não encontrada ou não pertence a este médico."
+    );
+  }
+
+  if (appointment.status === "COMPLETED" || appointment.status === "CANCELLED") {
+    redirect(
+      "/medico/consultas?erro=Não é possível alterar link de consulta encerrada."
+    );
   }
 
   await prisma.appointment.update({
@@ -140,4 +161,6 @@ export async function saveMeetingUrl(formData: FormData) {
   revalidatePath("/medico/historico");
   revalidatePath("/dashboard/medico");
   revalidatePath("/dashboard/paciente");
+
+  redirect("/medico/consultas");
 }
