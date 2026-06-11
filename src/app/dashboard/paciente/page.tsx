@@ -101,6 +101,7 @@ export default async function DashboardPacientePage({
     where: { patientId: patient.id },
     include: {
       availability: true,
+      medicalRecord: true,
       doctor: {
         include: {
           user: true,
@@ -384,7 +385,7 @@ export default async function DashboardPacientePage({
                 </h2>
 
                 <p className="mt-2 text-[#878787]">
-                  Veja suas próximas consultas e o status de cada atendimento.
+                  Veja suas próximas consultas, histórico e prontuários liberados.
                 </p>
               </div>
 
@@ -466,6 +467,27 @@ export default async function DashboardPacientePage({
                             </a>
                           </div>
                         )}
+
+                      {appointment.status === "COMPLETED" && appointment.medicalRecord && (
+                        <div className="mt-5 rounded-2xl border border-[#C6C6C6]/60 bg-white p-4">
+                          <p className="font-extrabold text-[#08553F]">
+                            Prontuário da consulta
+                          </p>
+
+                          <p className="mt-2 text-sm text-[#878787]">
+                            O prontuário desta consulta está disponível em PDF.
+                          </p>
+
+                          <a
+                            href={`/api/prontuario/${appointment.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-4 inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                          >
+                            Abrir prontuário em PDF →
+                          </a>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-3 md:items-end">

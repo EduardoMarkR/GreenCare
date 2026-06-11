@@ -20,13 +20,8 @@ function getStatusLabel(status: string) {
 }
 
 function getStatusClass(status: string) {
-  if (status === "CANCELLED") {
-    return "bg-red-100 text-red-700";
-  }
-
-  if (status === "COMPLETED") {
-    return "bg-blue-100 text-blue-700";
-  }
+  if (status === "CANCELLED") return "bg-red-100 text-red-700";
+  if (status === "COMPLETED") return "bg-blue-100 text-blue-700";
 
   return "bg-gray-100 text-gray-800";
 }
@@ -64,6 +59,7 @@ export default async function HistoricoMedicoPage() {
     },
     include: {
       availability: true,
+      medicalRecord: true,
       documents: {
         orderBy: {
           createdAt: "desc",
@@ -95,7 +91,7 @@ export default async function HistoricoMedicoPage() {
         <CannaPageHero
           badge="Histórico"
           title="Histórico de consultas"
-          description="Consulte atendimentos concluídos e cancelados, com documentos vinculados a cada consulta."
+          description="Consulte atendimentos concluídos e cancelados, documentos e prontuários vinculados."
           backHref="/dashboard/medico"
           backLabel="Voltar ao painel"
         />
@@ -159,6 +155,75 @@ export default async function HistoricoMedicoPage() {
                   >
                     {getStatusLabel(appointment.status)}
                   </span>
+                </div>
+
+                <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="font-extrabold text-[#08553F]">
+                      Prontuário eletrônico
+                    </h3>
+
+                    <Link
+                      href={`/medico/prontuario/${appointment.id}`}
+                      className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                    >
+                      {appointment.medicalRecord
+                        ? "Editar prontuário"
+                        : "Criar prontuário"}
+                    </Link>
+                  </div>
+
+                  {appointment.medicalRecord ? (
+                    <div className="mt-4 grid gap-4">
+                      {appointment.medicalRecord.complaint && (
+                        <div className="rounded-2xl bg-white p-4">
+                          <p className="text-sm font-bold text-[#08553F]">
+                            Queixa principal
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
+                            {appointment.medicalRecord.complaint}
+                          </p>
+                        </div>
+                      )}
+
+                      {appointment.medicalRecord.conduct && (
+                        <div className="rounded-2xl bg-white p-4">
+                          <p className="text-sm font-bold text-[#08553F]">
+                            Conduta médica
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
+                            {appointment.medicalRecord.conduct}
+                          </p>
+                        </div>
+                      )}
+
+                      {appointment.medicalRecord.notes && (
+                        <div className="rounded-2xl bg-white p-4">
+                          <p className="text-sm font-bold text-[#08553F]">
+                            Observações clínicas
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
+                            {appointment.medicalRecord.notes}
+                          </p>
+                        </div>
+                      )}
+
+                      {appointment.medicalRecord.prescription && (
+                        <div className="rounded-2xl bg-white p-4">
+                          <p className="text-sm font-bold text-[#08553F]">
+                            Prescrição / orientação terapêutica
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
+                            {appointment.medicalRecord.prescription}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-[#878787]">
+                      Nenhum prontuário foi registrado para esta consulta.
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
