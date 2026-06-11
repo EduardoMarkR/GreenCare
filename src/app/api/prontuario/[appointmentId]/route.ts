@@ -11,10 +11,39 @@ type RouteProps = {
   }>;
 };
 
+const brandColor = "#08553F";
+const accentColor = "#00CF7B";
+const mutedColor = "#666666";
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
   }).format(date);
+}
+
+function formatDateTime(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function getRecordNumber(appointmentId: string, date: Date) {
+  const datePart = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(date)
+    .split("/")
+    .reverse()
+    .join("");
+
+  const shortId = appointmentId.slice(0, 8).toUpperCase();
+
+  return `PR-${datePart}-${shortId}`;
 }
 
 async function getAppointmentWithMedicalRecord(appointmentId: string) {
@@ -39,6 +68,58 @@ async function getAppointmentWithMedicalRecord(appointmentId: string) {
   });
 }
 
+function addFooter(doc: jsPDF, generatedAt: Date) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setDrawColor(220, 220, 220);
+  doc.line(20, pageHeight - 20, pageWidth - 20, pageHeight - 20);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(mutedColor);
+  doc.text(
+    `Documento gerado eletronicamente pela plataforma CannaDoctor em ${formatDateTime(
+      generatedAt
+    )}.`,
+    pageWidth / 2,
+    pageHeight - 12,
+    { align: "center" }
+  );
+
+  doc.setTextColor("#000000");
+}
+
+function addHeader(doc: jsPDF, recordNumber: string) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(8, 85, 63);
+  doc.roundedRect(20, 16, pageWidth - 40, 28, 4, 4, "F");
+
+  doc.setTextColor("#FFFFFF");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("CannaDoctor", 28, 28);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Cannabis Medicinal", 28, 36);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Prontuário Eletrônico", pageWidth - 28, 28, {
+    align: "right",
+  });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(recordNumber, pageWidth - 28, 36, {
+    align: "right",
+  });
+
+  doc.setTextColor("#000000");
+}
+
 function addSection(
   doc: jsPDF,
   title: string,
@@ -50,17 +131,22 @@ function addSection(
   const maxWidth = 170;
   let y = startY;
 
-  if (y > pageHeight - 35) {
+  if (y > pageHeight - 45) {
     doc.addPage();
-    y = 20;
+    y = 24;
   }
 
+  doc.setFillColor(247, 244, 231);
+  doc.roundedRect(marginX, y - 6, 170, 10, 2, 2, "F");
+
+  doc.setTextColor(8, 85, 63);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text(title, marginX, y);
+  doc.setFontSize(11);
+  doc.text(title, marginX + 3, y);
 
-  y += 8;
+  y += 10;
 
+  doc.setTextColor("#000000");
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
 
@@ -68,9 +154,9 @@ function addSection(
   const lines = doc.splitTextToSize(text, maxWidth);
 
   lines.forEach((line: string) => {
-    if (y > pageHeight - 25) {
+    if (y > pageHeight - 32) {
       doc.addPage();
-      y = 20;
+      y = 24;
     }
 
     doc.text(line, marginX, y);
@@ -80,11 +166,35 @@ function addSection(
   return y + 8;
 }
 
+function addSignature(doc: jsPDF, doctorName: string, crm: string, crmUf: string) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = pageHeight - 55;
+
+  doc.setDrawColor(120, 120, 120);
+  doc.line(55, y, 155, y);
+
+  y += 7;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor("#000000");
+  doc.text(`Dr(a). ${doctorName}`, 105, y, { align: "center" });
+
+  y += 5;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(`CRM ${crm}/${crmUf}`, 105, y, { align: "center" });
+}
+
 async function createPdfBuffer(
   appointment: NonNullable<
     Awaited<ReturnType<typeof getAppointmentWithMedicalRecord>>
   >
 ) {
+  const generatedAt = new Date();
+  const recordNumber = getRecordNumber(appointment.id, appointment.date);
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -92,22 +202,26 @@ async function createPdfBuffer(
   });
 
   doc.setProperties({
-    title: "Prontuário Eletrônico",
+    title: `Prontuário Eletrônico - ${recordNumber}`,
     author: "CannaDoctor",
     creator: "CannaDoctor",
   });
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Prontuário Eletrônico", 105, 20, { align: "center" });
+  addHeader(doc, recordNumber);
 
+  doc.setTextColor(8, 85, 63);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Prontuário Eletrônico", 105, 58, { align: "center" });
+
+  doc.setTextColor(mutedColor);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("CannaDoctor - Cannabis Medicinal", 105, 28, {
+  doc.setFontSize(9);
+  doc.text(`Número do prontuário: ${recordNumber}`, 105, 66, {
     align: "center",
   });
 
-  let currentY = 42;
+  let currentY = 82;
 
   currentY = addSection(
     doc,
@@ -151,18 +265,16 @@ async function createPdfBuffer(
     "Prescrição / orientação terapêutica",
     appointment.medicalRecord?.prescription,
     currentY
-);
-
-  const pageHeight = doc.internal.pageSize.getHeight();
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(
-    "Documento gerado eletronicamente pela plataforma CannaDoctor.",
-    105,
-    pageHeight - 12,
-    { align: "center" }
   );
+
+  addSignature(
+    doc,
+    appointment.doctor.user.name,
+    appointment.doctor.crm,
+    appointment.doctor.crmUf
+  );
+
+  addFooter(doc, generatedAt);
 
   const arrayBuffer = doc.output("arraybuffer");
 
@@ -200,12 +312,13 @@ export async function GET(_request: Request, { params }: RouteProps) {
   }
 
   const pdfBuffer = await createPdfBuffer(appointment);
+  const recordNumber = getRecordNumber(appointment.id, appointment.date);
 
   return new Response(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="prontuario-${appointment.id}.pdf"`,
+      "Content-Disposition": `inline; filename="${recordNumber}.pdf"`,
     },
   });
 }
