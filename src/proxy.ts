@@ -12,40 +12,72 @@ function redirectToHome(request: NextRequest) {
   return NextResponse.redirect(new URL("/", request.url));
 }
 
+function redirectToDashboard(request: NextRequest, role?: string) {
+  if (role === "ADMIN") {
+    return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+  }
+
+  if (role === "DOCTOR") {
+    return NextResponse.redirect(new URL("/dashboard/medico", request.url));
+  }
+
+  return NextResponse.redirect(new URL("/dashboard/paciente", request.url));
+}
+
+function isPublicAuthRoute(pathname: string) {
+  return pathname === "/login" || pathname === "/cadastro";
+}
+
 export function proxy(request: NextRequest) {
   const userId = request.cookies.get("userId")?.value;
   const userRole = request.cookies.get("userRole")?.value;
 
   const { pathname } = request.nextUrl;
 
+  const isLoggedIn = Boolean(userId);
+
   const isAdminRoute =
     pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin");
 
-  const isAuthenticatedRoute =
-    pathname.startsWith("/dashboard/paciente") ||
-    pathname.startsWith("/dashboard/medico") ||
-    pathname.startsWith("/medico") ||
-    pathname.startsWith("/selecionar-perfil") ||
-    pathname.startsWith("/agendar");
+  const isPatientRoute = pathname.startsWith("/dashboard/paciente");
 
-  if (isAdminRoute) {
-    if (!userId) {
-      return redirectToLogin(request);
-    }
+  const isDoctorRoute =
+    pathname.startsWith("/dashboard/medico") || pathname.startsWith("/medico");
 
-    if (userRole !== "ADMIN") {
-      return redirectToHome(request);
-    }
+  const isProfileSelectionRoute = pathname.startsWith("/selecionar-perfil");
 
-    return NextResponse.next();
+  const isAppointmentRoute = pathname.startsWith("/agendar");
+
+  if (isPublicAuthRoute(pathname) && isLoggedIn) {
+    return redirectToDashboard(request, userRole);
   }
 
-  if (isAuthenticatedRoute) {
-    if (!userId) {
+  if (
+    isAdminRoute ||
+    isPatientRoute ||
+    isDoctorRoute ||
+    isProfileSelectionRoute ||
+    isAppointmentRoute
+  ) {
+    if (!isLoggedIn) {
       return redirectToLogin(request);
     }
+  }
 
-    return NextResponse.next();
+  if (isAdminRoute && userRole !== "ADMIN") {
+    return redirectToHome(request);
+  }
+
+  if (isPatientRoute && userRole !== "PATIENT") {
+    return redirectToDashboard(request, userRole);
+  }
+
+  if (isDoctorRoute && userRole !== "DOCTOR") {
+    return redirectToDashboard(request, userRole);
+  }
+
+  if (isAppointmentRoute && userRole !== "PATIENT") {
+    return redirectToDashboard(request, userRole);
   }
 
   return NextResponse.next();
@@ -53,6 +85,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/login",
+    "/cadastro",
     "/admin/:path*",
     "/dashboard/admin/:path*",
     "/dashboard/paciente/:path*",
