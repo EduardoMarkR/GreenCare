@@ -52,6 +52,7 @@ model Patient {
   appointments   Appointment[]
   documents      Document[]
   medicalRecords MedicalRecord[]
+  prescriptions  Prescription[]
 }
 
 model Doctor {
@@ -73,6 +74,7 @@ model Doctor {
   appointments   Appointment[]
   availabilities Availability[]
   medicalRecords MedicalRecord[]
+  prescriptions  Prescription[]
 }
 
 model Availability {
@@ -104,6 +106,7 @@ model Appointment {
   availability  Availability?  @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
   documents     Document[]
   medicalRecord MedicalRecord?
+  prescription  Prescription?
 }
 
 model Document {
@@ -146,6 +149,26 @@ model MedicalRecord {
   conduct      String?
   notes        String?
   prescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Prescription {
+  id            String      @id @default(uuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  medication   String
+  dosage       String
+  quantity     String?
+  instructions String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
