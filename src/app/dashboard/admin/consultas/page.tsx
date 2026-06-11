@@ -11,8 +11,11 @@ type AdminAgendamentosPageProps = {
   searchParams?: Promise<{
     status?: string;
     busca?: string;
+    pagina?: string;
   }>;
 };
+
+const APPOINTMENTS_PER_PAGE = 10;
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -55,11 +58,29 @@ function getFilterHref(status: string, searchTerm: string) {
     params.set("busca", searchTerm);
   }
 
-  const queryString = params.toString();
+  params.set("pagina", "1");
 
-  return queryString
-    ? `/dashboard/admin/consultas?${queryString}`
-    : "/dashboard/admin/consultas";
+  return `/dashboard/admin/consultas?${params.toString()}`;
+}
+
+function getPaginationHref(
+  page: number,
+  statusFilter: string,
+  searchTerm: string
+) {
+  const params = new URLSearchParams();
+
+  if (statusFilter !== "ALL") {
+    params.set("status", statusFilter);
+  }
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  params.set("pagina", String(page));
+
+  return `/dashboard/admin/consultas?${params.toString()}`;
 }
 
 export default async function AdminAgendamentosPage({
@@ -77,6 +98,8 @@ export default async function AdminAgendamentosPage({
   const params = await searchParams;
   const selectedStatus = params?.status ?? "ALL";
   const searchTerm = params?.busca?.trim() ?? "";
+  const currentPage = Math.max(Number(params?.pagina ?? "1"), 1);
+  const skip = (currentPage - 1) * APPOINTMENTS_PER_PAGE;
 
   const validStatuses = [
     "ALL",
@@ -90,112 +113,133 @@ export default async function AdminAgendamentosPage({
     ? selectedStatus
     : "ALL";
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      ...(statusFilter !== "ALL"
-        ? {
-            status: statusFilter as
-              | "PENDING"
-              | "CONFIRMED"
-              | "CANCELLED"
-              | "COMPLETED",
-          }
-        : {}),
-      ...(searchTerm
-        ? {
-            OR: [
-              {
-                notes: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
+  const where = {
+    ...(statusFilter !== "ALL"
+      ? {
+          status: statusFilter as
+            | "PENDING"
+            | "CONFIRMED"
+            | "CANCELLED"
+            | "COMPLETED",
+        }
+      : {}),
+    ...(searchTerm
+      ? {
+          OR: [
+            {
+              notes: {
+                contains: searchTerm,
+                mode: "insensitive" as const,
               },
-              {
-                patient: {
-                  user: {
-                    name: {
-                      contains: searchTerm,
-                      mode: "insensitive",
-                    },
+            },
+            {
+              patient: {
+                user: {
+                  name: {
+                    contains: searchTerm,
+                    mode: "insensitive" as const,
                   },
                 },
               },
-              {
-                patient: {
-                  user: {
-                    email: {
-                      contains: searchTerm,
-                      mode: "insensitive",
-                    },
+            },
+            {
+              patient: {
+                user: {
+                  email: {
+                    contains: searchTerm,
+                    mode: "insensitive" as const,
                   },
                 },
               },
-              {
-                doctor: {
-                  user: {
-                    name: {
-                      contains: searchTerm,
-                      mode: "insensitive",
-                    },
+            },
+            {
+              doctor: {
+                user: {
+                  name: {
+                    contains: searchTerm,
+                    mode: "insensitive" as const,
                   },
                 },
               },
-              {
-                doctor: {
-                  user: {
-                    email: {
-                      contains: searchTerm,
-                      mode: "insensitive",
-                    },
+            },
+            {
+              doctor: {
+                user: {
+                  email: {
+                    contains: searchTerm,
+                    mode: "insensitive" as const,
                   },
                 },
               },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      patient: {
-        include: {
-          user: true,
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const [
+    appointments,
+    filteredAppointments,
+    totalAppointments,
+    pendingAppointments,
+    confirmedAppointments,
+    cancelledAppointments,
+    completedAppointments,
+  ] = await Promise.all([
+    prisma.appointment.findMany({
+      where,
+      include: {
+        patient: {
+          include: {
+            user: true,
+          },
+        },
+        doctor: {
+          include: {
+            user: true,
+          },
         },
       },
-      doctor: {
-        include: {
-          user: true,
-        },
+      orderBy: {
+        createdAt: "desc",
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+      skip,
+      take: APPOINTMENTS_PER_PAGE,
+    }),
+    prisma.appointment.count({
+      where,
+    }),
+    prisma.appointment.count(),
+    prisma.appointment.count({
+      where: {
+        status: "PENDING",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        status: "CONFIRMED",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        status: "CANCELLED",
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        status: "COMPLETED",
+      },
+    }),
+  ]);
 
-  const totalAppointments = await prisma.appointment.count();
+  const totalPages = Math.max(
+    Math.ceil(filteredAppointments / APPOINTMENTS_PER_PAGE),
+    1
+  );
 
-  const pendingAppointments = await prisma.appointment.count({
-    where: {
-      status: "PENDING",
-    },
-  });
-
-  const confirmedAppointments = await prisma.appointment.count({
-    where: {
-      status: "CONFIRMED",
-    },
-  });
-
-  const cancelledAppointments = await prisma.appointment.count({
-    where: {
-      status: "CANCELLED",
-    },
-  });
-
-  const completedAppointments = await prisma.appointment.count({
-    where: {
-      status: "COMPLETED",
-    },
-  });
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const hasPreviousPage = safeCurrentPage > 1;
+  const hasNextPage = safeCurrentPage < totalPages;
 
   return (
     <>
@@ -215,7 +259,11 @@ export default async function AdminAgendamentosPage({
             {[
               ["Total", totalAppointments, "from-[#08553F] to-[#00CF7B]"],
               ["Pendentes", pendingAppointments, "from-[#F3EFA1] to-[#00CF7B]"],
-              ["Confirmadas", confirmedAppointments, "from-[#08553F] to-[#00CF7B]"],
+              [
+                "Confirmadas",
+                confirmedAppointments,
+                "from-[#08553F] to-[#00CF7B]",
+              ],
               ["Canceladas", cancelledAppointments, "from-red-400 to-red-600"],
               ["Concluídas", completedAppointments, "from-blue-400 to-blue-600"],
             ].map(([label, value, gradient]) => (
@@ -337,7 +385,26 @@ export default async function AdminAgendamentosPage({
             </div>
           </div>
 
-          <div className="mt-10 grid gap-5">
+          <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Consultas encontradas
+                </h2>
+
+                <p className="mt-1 text-sm text-[#878787]">
+                  Exibindo {appointments.length} de {filteredAppointments}{" "}
+                  consulta(s). Página {safeCurrentPage} de {totalPages}.
+                </p>
+              </div>
+
+              <p className="w-fit rounded-full bg-[#F7F4E7] px-4 py-2 text-sm font-bold text-[#08553F]">
+                {APPOINTMENTS_PER_PAGE} por página
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5">
             {appointments.length === 0 && (
               <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm">
                 <p className="font-bold text-[#08553F]">
@@ -386,7 +453,9 @@ export default async function AdminAgendamentosPage({
                         </p>
 
                         <p>
-                          <strong className="text-[#08553F]">Criada em:</strong>{" "}
+                          <strong className="text-[#08553F]">
+                            Criada em:
+                          </strong>{" "}
                           {formatDate(appointment.createdAt)}
                         </p>
 
@@ -506,6 +575,51 @@ export default async function AdminAgendamentosPage({
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 rounded-[2rem] bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm font-semibold text-[#878787]">
+              Página {safeCurrentPage} de {totalPages}. Total filtrado:{" "}
+              <strong className="text-[#08553F]">
+                {filteredAppointments}
+              </strong>
+            </p>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {hasPreviousPage ? (
+                <Link
+                  href={getPaginationHref(
+                    safeCurrentPage - 1,
+                    statusFilter,
+                    searchTerm
+                  )}
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Página anterior
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] px-5 py-3 text-center text-sm font-bold text-[#878787]">
+                  Página anterior
+                </span>
+              )}
+
+              {hasNextPage ? (
+                <Link
+                  href={getPaginationHref(
+                    safeCurrentPage + 1,
+                    statusFilter,
+                    searchTerm
+                  )}
+                  className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Próxima página
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-2xl bg-[#F7F4E7] px-5 py-3 text-center text-sm font-bold text-[#878787]">
+                  Próxima página
+                </span>
+              )}
+            </div>
           </div>
         </section>
       </main>
