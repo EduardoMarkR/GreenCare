@@ -181,6 +181,7 @@ export default async function ConsultasMedicoPage({
       where: appointmentWhere,
       include: {
         availability: true,
+        medicalRecord: true,
         documents: {
           orderBy: {
             createdAt: "desc",
@@ -504,6 +505,16 @@ export default async function ConsultasMedicoPage({
                         </p>
                       )}
 
+                      {appointment.medicalRecord ? (
+                        <p className="mt-3 inline-flex rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
+                          Prontuário já iniciado
+                        </p>
+                      ) : (
+                        <p className="mt-3 inline-flex rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F]">
+                          Prontuário pendente
+                        </p>
+                      )}
+
                       {appointment.notes && (
                         <p className="mt-3 text-sm text-[#878787]">
                           Observações: {appointment.notes}
@@ -560,6 +571,15 @@ export default async function ConsultasMedicoPage({
                             </button>
                           </form>
                         )}
+
+                        <Link
+                          href={`/medico/prontuario/${appointment.id}`}
+                          className="rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                        >
+                          {appointment.medicalRecord
+                            ? "Editar prontuário"
+                            : "Abrir prontuário"}
+                        </Link>
 
                         <Link
                           href={getConfirmationHref(
