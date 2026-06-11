@@ -164,9 +164,31 @@ export default async function HistoricoMedicoPage() {
                       </span>
 
                       <div className="flex flex-wrap gap-2 lg:justify-end">
+                        {appointment.medicalRecord && (
+                          <a
+                            href={`/api/prontuario/${appointment.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                          >
+                            Prontuário PDF →
+                          </a>
+                        )}
+
+                        {appointment.prescription && (
+                          <a
+                            href={`/api/receita/${appointment.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex w-fit rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                          >
+                            Receita PDF →
+                          </a>
+                        )}
+
                         <Link
                           href={`/medico/prontuario/${appointment.id}`}
-                          className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                          className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
                         >
                           {appointment.medicalRecord
                             ? "Editar prontuário"
@@ -181,17 +203,6 @@ export default async function HistoricoMedicoPage() {
                             ? "Editar receita"
                             : "Criar receita"}
                         </Link>
-
-                        {appointment.medicalRecord && (
-                          <a
-                            href={`/api/prontuario/${appointment.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex w-fit rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
-                          >
-                            PDF prontuário →
-                          </a>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -221,8 +232,8 @@ export default async function HistoricoMedicoPage() {
 
                       {appointment.prescription ? (
                         <p className="mt-2 text-sm leading-6 text-[#878787]">
-                          Receita registrada. O PDF será liberado na próxima
-                          etapa.
+                          Receita registrada. O conteúdo completo está
+                          disponível no PDF.
                         </p>
                       ) : (
                         <p className="mt-2 text-sm leading-6 text-[#878787]">
