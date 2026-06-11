@@ -35,9 +35,14 @@ export default async function HistoricoMedicoPage() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -47,7 +52,7 @@ export default async function HistoricoMedicoPage() {
   });
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
-    redirect("/login");
+    redirect("/");
   }
 
   const appointments = await prisma.appointment.findMany({
@@ -58,15 +63,28 @@ export default async function HistoricoMedicoPage() {
       },
     },
     include: {
+      availability: true,
+      documents: {
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
       patient: {
         include: {
           user: true,
         },
       },
     },
-    orderBy: {
-      date: "desc",
-    },
+    orderBy: [
+      {
+        date: "desc",
+      },
+      {
+        availability: {
+          startTime: "desc",
+        },
+      },
+    ],
   });
 
   return (
@@ -77,7 +95,7 @@ export default async function HistoricoMedicoPage() {
         <CannaPageHero
           badge="Histórico"
           title="Histórico de consultas"
-          description="Consulte atendimentos concluídos e cancelados."
+          description="Consulte atendimentos concluídos e cancelados, com documentos vinculados a cada consulta."
           backHref="/dashboard/medico"
           backLabel="Voltar ao painel"
         />
@@ -86,7 +104,7 @@ export default async function HistoricoMedicoPage() {
           <div className="mb-8 flex flex-wrap gap-3">
             <Link
               href="/medico/consultas"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 font-bold text-[#08553F]"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
             >
               Consultas ativas
             </Link>
@@ -112,9 +130,26 @@ export default async function HistoricoMedicoPage() {
                       {appointment.patient.user.name}
                     </p>
 
-                    <p className="mt-2 text-sm text-[#878787]">
+                    <p className="mt-2 text-sm font-semibold text-[#08553F]">
                       {formatDate(appointment.date)}
                     </p>
+
+                    {appointment.availability ? (
+                      <p className="mt-1 text-sm font-semibold text-[#08553F]">
+                        {appointment.availability.startTime} às{" "}
+                        {appointment.availability.endTime}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm font-semibold text-[#878787]">
+                        Horário não informado
+                      </p>
+                    )}
+
+                    {appointment.notes && (
+                      <p className="mt-3 text-sm text-[#878787]">
+                        Observações: {appointment.notes}
+                      </p>
+                    )}
                   </div>
 
                   <span
@@ -124,6 +159,48 @@ export default async function HistoricoMedicoPage() {
                   >
                     {getStatusLabel(appointment.status)}
                   </span>
+                </div>
+
+                <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                  <h3 className="font-extrabold text-[#08553F]">
+                    Documentos desta consulta
+                  </h3>
+
+                  <div className="mt-4 space-y-3">
+                    {appointment.documents.length === 0 && (
+                      <p className="text-sm text-[#878787]">
+                        Nenhum documento vinculado a esta consulta.
+                      </p>
+                    )}
+
+                    {appointment.documents.map((document) => (
+                      <div
+                        key={document.id}
+                        className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div>
+                          <p className="font-bold text-[#08553F]">
+                            {document.name}
+                          </p>
+
+                          {document.fileType && (
+                            <p className="text-sm text-[#878787]">
+                              {document.fileType}
+                            </p>
+                          )}
+                        </div>
+
+                        <a
+                          href={document.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                        >
+                          Abrir documento →
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
