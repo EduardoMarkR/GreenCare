@@ -11,8 +11,11 @@ import { deletePatient } from "./actions";
 type AdminPacientesPageProps = {
   searchParams?: Promise<{
     busca?: string;
+    pagina?: string;
   }>;
 };
+
+const PATIENTS_PER_PAGE = 10;
 
 function formatDate(date?: Date | null) {
   if (!date) {
@@ -22,6 +25,18 @@ function formatDate(date?: Date | null) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
   }).format(date);
+}
+
+function getPaginationHref(page: number, searchTerm: string) {
+  const params = new URLSearchParams();
+
+  if (searchTerm) {
+    params.set("busca", searchTerm);
+  }
+
+  params.set("pagina", String(page));
+
+  return `/dashboard/admin/pacientes?${params.toString()}`;
 }
 
 export default async function AdminPacientesPage({
@@ -38,47 +53,66 @@ export default async function AdminPacientesPage({
 
   const params = await searchParams;
   const searchTerm = params?.busca?.trim() ?? "";
+  const currentPage = Math.max(Number(params?.pagina ?? "1"), 1);
+  const skip = (currentPage - 1) * PATIENTS_PER_PAGE;
 
-  const patients = await prisma.patient.findMany({
-    where: searchTerm
-      ? {
-          OR: [
-            {
-              phone: {
+  const where = searchTerm
+    ? {
+        OR: [
+          {
+            phone: {
+              contains: searchTerm,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            user: {
+              name: {
                 contains: searchTerm,
-                mode: "insensitive",
+                mode: "insensitive" as const,
               },
             },
-            {
-              user: {
-                name: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
+          },
+          {
+            user: {
+              email: {
+                contains: searchTerm,
+                mode: "insensitive" as const,
               },
             },
-            {
-              user: {
-                email: {
-                  contains: searchTerm,
-                  mode: "insensitive",
-                },
-              },
-            },
-          ],
-        }
-      : undefined,
-    include: {
-      user: true,
-      appointments: true,
-      documents: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+          },
+        ],
+      }
+    : undefined;
 
-  const totalPatients = await prisma.patient.count();
+  const [patients, filteredPatients, totalPatients] = await Promise.all([
+    prisma.patient.findMany({
+      where,
+      include: {
+        user: true,
+        appointments: true,
+        documents: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      skip,
+      take: PATIENTS_PER_PAGE,
+    }),
+    prisma.patient.count({
+      where,
+    }),
+    prisma.patient.count(),
+  ]);
+
+  const totalPages = Math.max(
+    Math.ceil(filteredPatients / PATIENTS_PER_PAGE),
+    1
+  );
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const hasPreviousPage = safeCurrentPage > 1;
+  const hasNextPage = safeCurrentPage < totalPages;
 
   return (
     <>
@@ -114,11 +148,11 @@ export default async function AdminPacientesPage({
 
               <div className="p-6">
                 <p className="text-sm font-bold text-[#878787]">
-                  Resultado atual
+                  Resultado filtrado
                 </p>
 
                 <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
-                  {patients.length}
+                  {filteredPatients}
                 </p>
               </div>
             </div>
@@ -128,11 +162,11 @@ export default async function AdminPacientesPage({
 
               <div className="p-6">
                 <p className="text-sm font-bold text-[#878787]">
-                  Filtro aplicado
+                  Página atual
                 </p>
 
-                <p className="mt-2 text-lg font-extrabold text-[#08553F]">
-                  {searchTerm || "Nenhum"}
+                <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                  {safeCurrentPage}
                 </p>
               </div>
             </div>
@@ -190,7 +224,26 @@ export default async function AdminPacientesPage({
             </form>
           </div>
 
-          <div className="mt-10 grid gap-5">
+          <div className="mt-8 rounded-[2rem] bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Pacientes encontrados
+                </h2>
+
+                <p className="mt-1 text-sm text-[#878787]">
+                  Exibindo {patients.length} de {filteredPatients} paciente(s).
+                  Página {safeCurrentPage} de {totalPages}.
+                </p>
+              </div>
+
+              <p className="w-fit rounded-full bg-[#F7F4E7] px-4 py-2 text-sm font-bold text-[#08553F]">
+                {PATIENTS_PER_PAGE} por página
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5">
             {patients.length === 0 && (
               <div className="rounded-[2rem] bg-white p-6 shadow-sm">
                 <p className="font-bold text-[#08553F]">
@@ -287,6 +340,41 @@ export default async function AdminPacientesPage({
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 rounded-[2rem] bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+            <p className="text-sm font-semibold text-[#878787]">
+              Página {safeCurrentPage} de {totalPages}. Total filtrado:{" "}
+              <strong className="text-[#08553F]">{filteredPatients}</strong>
+            </p>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {hasPreviousPage ? (
+                <Link
+                  href={getPaginationHref(safeCurrentPage - 1, searchTerm)}
+                  className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Página anterior
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] px-5 py-3 text-center text-sm font-bold text-[#878787]">
+                  Página anterior
+                </span>
+              )}
+
+              {hasNextPage ? (
+                <Link
+                  href={getPaginationHref(safeCurrentPage + 1, searchTerm)}
+                  className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Próxima página
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-2xl bg-[#F7F4E7] px-5 py-3 text-center text-sm font-bold text-[#878787]">
+                  Próxima página
+                </span>
+              )}
+            </div>
           </div>
         </section>
       </main>
