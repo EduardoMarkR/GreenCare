@@ -11,10 +11,18 @@ export async function cancelPatientAppointment(formData: FormData) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId || userRole !== "PATIENT") {
+  if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "PATIENT") {
+    redirect("/");
+  }
+
+  if (!appointmentId) {
+    redirect("/dashboard/paciente?erro=Consulta não informada.");
   }
 
   const patient = await prisma.patient.findUnique({
@@ -24,7 +32,7 @@ export async function cancelPatientAppointment(formData: FormData) {
   });
 
   if (!patient) {
-    throw new Error("Paciente não encontrado.");
+    redirect("/login");
   }
 
   const appointment = await prisma.appointment.findFirst({
@@ -35,11 +43,15 @@ export async function cancelPatientAppointment(formData: FormData) {
   });
 
   if (!appointment) {
-    throw new Error("Consulta não encontrada ou não pertence a este paciente.");
+    redirect(
+      "/dashboard/paciente?erro=Consulta não encontrada ou não pertence a este paciente."
+    );
   }
 
   if (appointment.status === "CANCELLED" || appointment.status === "COMPLETED") {
-    throw new Error("Esta consulta não pode mais ser cancelada.");
+    redirect(
+      "/dashboard/paciente?erro=Esta consulta não pode mais ser cancelada."
+    );
   }
 
   await prisma.appointment.update({
@@ -52,4 +64,9 @@ export async function cancelPatientAppointment(formData: FormData) {
   });
 
   revalidatePath("/dashboard/paciente");
+  revalidatePath("/medico/consultas");
+  revalidatePath("/medico/historico");
+  revalidatePath("/dashboard/medico");
+
+  redirect("/dashboard/paciente");
 }

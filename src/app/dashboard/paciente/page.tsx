@@ -7,6 +7,13 @@ import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { cancelPatientAppointment } from "./actions";
 
+type DashboardPacientePageProps = {
+  searchParams?: Promise<{
+    erro?: string;
+    cancelar?: string;
+  }>;
+};
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
@@ -39,7 +46,13 @@ function getDoctorStatusLabel(status: string) {
   return status;
 }
 
-export default async function DashboardPacientePage() {
+export default async function DashboardPacientePage({
+  searchParams,
+}: DashboardPacientePageProps) {
+  const params = await searchParams;
+  const erro = params?.erro;
+  const appointmentToCancelId = params?.cancelar;
+
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
@@ -107,6 +120,12 @@ export default async function DashboardPacientePage() {
     take: 5,
   });
 
+  const appointmentToCancel = appointmentToCancelId
+    ? proximasConsultas.find(
+        (appointment) => appointment.id === appointmentToCancelId
+      )
+    : null;
+
   return (
     <>
       <Navbar />
@@ -119,6 +138,67 @@ export default async function DashboardPacientePage() {
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
+          {erro ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Não foi possível concluir a ação
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">{erro}</p>
+            </div>
+          ) : null}
+
+          {appointmentToCancel ? (
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 shadow-sm">
+              <p className="text-xl font-extrabold text-red-700">
+                Confirmar cancelamento
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-red-700">
+                Tem certeza que deseja cancelar a consulta com{" "}
+                <strong>Dr(a). {appointmentToCancel.doctor.user.name}</strong>{" "}
+                em <strong>{formatDate(appointmentToCancel.date)}</strong>
+                {appointmentToCancel.availability ? (
+                  <>
+                    , das{" "}
+                    <strong>{appointmentToCancel.availability.startTime}</strong>{" "}
+                    às{" "}
+                    <strong>{appointmentToCancel.availability.endTime}</strong>
+                  </>
+                ) : null}
+                ?
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-red-700">
+                Essa ação moverá a consulta para o histórico como cancelada.
+              </p>
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <form action={cancelPatientAppointment}>
+                  <input
+                    type="hidden"
+                    name="appointmentId"
+                    value={appointmentToCancel.id}
+                  />
+
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700"
+                  >
+                    Sim, cancelar consulta
+                  </button>
+                </form>
+
+                <Link
+                  href="/dashboard/paciente"
+                  className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] ring-1 ring-[#C6C6C6]/70 transition hover:bg-[#F3EFA1]"
+                >
+                  Manter consulta
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/dashboard/paciente/perfil"
@@ -399,20 +479,12 @@ export default async function DashboardPacientePage() {
 
                       {(appointment.status === "PENDING" ||
                         appointment.status === "CONFIRMED") && (
-                        <form action={cancelPatientAppointment}>
-                          <input
-                            type="hidden"
-                            name="appointmentId"
-                            value={appointment.id}
-                          />
-
-                          <button
-                            type="submit"
-                            className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
-                          >
-                            Cancelar consulta
-                          </button>
-                        </form>
+                        <Link
+                          href={`/dashboard/paciente?cancelar=${appointment.id}`}
+                          className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
+                        >
+                          Cancelar consulta
+                        </Link>
                       )}
                     </div>
                   </div>
