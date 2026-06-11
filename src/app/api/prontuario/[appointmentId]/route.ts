@@ -11,8 +11,6 @@ type RouteProps = {
   }>;
 };
 
-const brandColor = "#08553F";
-const accentColor = "#00CF7B";
 const mutedColor = "#666666";
 
 function formatDate(date: Date) {
@@ -166,7 +164,12 @@ function addSection(
   return y + 8;
 }
 
-function addSignature(doc: jsPDF, doctorName: string, crm: string, crmUf: string) {
+function addSignature(
+  doc: jsPDF,
+  doctorName: string,
+  crm: string,
+  crmUf: string
+) {
   const pageHeight = doc.internal.pageSize.getHeight();
   let y = pageHeight - 55;
 
@@ -305,9 +308,12 @@ export async function GET(_request: Request, { params }: RouteProps) {
   const isPatientOwner =
     activeProfile === "PATIENT" && appointment.patient.userId === userId;
 
+  const isDoctorOwner =
+    activeProfile === "DOCTOR" && appointment.doctor.userId === userId;
+
   const isAdmin = activeProfile === "ADMIN";
 
-  if (!isPatientOwner && !isAdmin) {
+  if (!isPatientOwner && !isDoctorOwner && !isAdmin) {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 

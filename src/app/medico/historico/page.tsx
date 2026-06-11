@@ -20,10 +20,10 @@ function getStatusLabel(status: string) {
 }
 
 function getStatusClass(status: string) {
-  if (status === "CANCELLED") return "bg-red-100 text-red-700";
-  if (status === "COMPLETED") return "bg-blue-100 text-blue-700";
+  if (status === "CANCELLED") return "bg-red-50 text-red-700 ring-red-100";
+  if (status === "COMPLETED") return "bg-blue-50 text-blue-700 ring-blue-100";
 
-  return "bg-gray-100 text-gray-800";
+  return "bg-gray-50 text-gray-700 ring-gray-100";
 }
 
 export default async function HistoricoMedicoPage() {
@@ -91,7 +91,7 @@ export default async function HistoricoMedicoPage() {
         <CannaPageHero
           badge="Histórico"
           title="Histórico de consultas"
-          description="Consulte atendimentos concluídos e cancelados, documentos e prontuários vinculados."
+          description="Consulte atendimentos encerrados, documentos vinculados e prontuários em PDF."
           backHref="/dashboard/medico"
           backLabel="Voltar ao painel"
         />
@@ -106,168 +106,148 @@ export default async function HistoricoMedicoPage() {
             </Link>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             {appointments.length === 0 && (
               <div className="rounded-[2rem] bg-white p-6 shadow-sm">
                 <p className="font-bold text-[#08553F]">
                   Nenhum histórico encontrado.
                 </p>
+
+                <p className="mt-2 text-sm text-[#878787]">
+                  Consultas concluídas ou canceladas aparecerão aqui.
+                </p>
               </div>
             )}
 
             {appointments.map((appointment) => (
-              <div
+              <article
                 key={appointment.id}
-                className="rounded-[2rem] bg-white p-6 shadow-sm"
+                className="overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm"
               >
-                <div className="flex flex-col gap-4 md:flex-row md:justify-between">
-                  <div>
-                    <p className="font-extrabold text-[#08553F]">
-                      {appointment.patient.user.name}
-                    </p>
+                <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
 
-                    <p className="mt-2 text-sm font-semibold text-[#08553F]">
-                      {formatDate(appointment.date)}
-                    </p>
+                <div className="p-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xl font-extrabold text-[#08553F]">
+                        {appointment.patient.user.name}
+                      </p>
 
-                    {appointment.availability ? (
-                      <p className="mt-1 text-sm font-semibold text-[#08553F]">
-                        {appointment.availability.startTime} às{" "}
-                        {appointment.availability.endTime}
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-sm font-semibold text-[#878787]">
-                        Horário não informado
-                      </p>
-                    )}
+                      <div className="mt-3 flex flex-wrap gap-2 text-sm font-semibold text-[#08553F]">
+                        <span>{formatDate(appointment.date)}</span>
 
-                    {appointment.notes && (
-                      <p className="mt-3 text-sm text-[#878787]">
-                        Observações: {appointment.notes}
-                      </p>
-                    )}
+                        {appointment.availability ? (
+                          <span>
+                            • {appointment.availability.startTime} às{" "}
+                            {appointment.availability.endTime}
+                          </span>
+                        ) : (
+                          <span>• Horário não informado</span>
+                        )}
+                      </div>
+
+                      {appointment.notes && (
+                        <p className="mt-3 text-sm leading-6 text-[#878787]">
+                          Observações: {appointment.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-3 lg:items-end">
+                      <span
+                        className={`w-fit rounded-full px-4 py-2 text-sm font-bold ring-1 ${getStatusClass(
+                          appointment.status
+                        )}`}
+                      >
+                        {getStatusLabel(appointment.status)}
+                      </span>
+
+                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                        <Link
+                          href={`/medico/prontuario/${appointment.id}`}
+                          className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                        >
+                          {appointment.medicalRecord
+                            ? "Editar prontuário"
+                            : "Criar prontuário"}
+                        </Link>
+
+                        {appointment.medicalRecord && (
+                          <a
+                            href={`/api/prontuario/${appointment.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex w-fit rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                          >
+                            Abrir PDF →
+                          </a>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <span
-                    className={`w-fit rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
-                      appointment.status
-                    )}`}
-                  >
-                    {getStatusLabel(appointment.status)}
-                  </span>
-                </div>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                      <h3 className="font-extrabold text-[#08553F]">
+                        Prontuário
+                      </h3>
 
-                <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 className="font-extrabold text-[#08553F]">
-                      Prontuário eletrônico
-                    </h3>
-
-                    <Link
-                      href={`/medico/prontuario/${appointment.id}`}
-                      className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                    >
-                      {appointment.medicalRecord
-                        ? "Editar prontuário"
-                        : "Criar prontuário"}
-                    </Link>
-                  </div>
-
-                  {appointment.medicalRecord ? (
-                    <div className="mt-4 grid gap-4">
-                      {appointment.medicalRecord.complaint && (
-                        <div className="rounded-2xl bg-white p-4">
-                          <p className="text-sm font-bold text-[#08553F]">
-                            Queixa principal
-                          </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
-                            {appointment.medicalRecord.complaint}
-                          </p>
-                        </div>
+                      {appointment.medicalRecord ? (
+                        <p className="mt-2 text-sm leading-6 text-[#878787]">
+                          Prontuário registrado. O conteúdo completo está
+                          disponível no PDF.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-[#878787]">
+                          Nenhum prontuário registrado para esta consulta.
+                        </p>
                       )}
+                    </div>
 
-                      {appointment.medicalRecord.conduct && (
-                        <div className="rounded-2xl bg-white p-4">
-                          <p className="text-sm font-bold text-[#08553F]">
-                            Conduta médica
-                          </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
-                            {appointment.medicalRecord.conduct}
-                          </p>
-                        </div>
-                      )}
+                    <div className="rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+                      <h3 className="font-extrabold text-[#08553F]">
+                        Documentos
+                      </h3>
 
-                      {appointment.medicalRecord.notes && (
-                        <div className="rounded-2xl bg-white p-4">
-                          <p className="text-sm font-bold text-[#08553F]">
-                            Observações clínicas
-                          </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
-                            {appointment.medicalRecord.notes}
-                          </p>
-                        </div>
-                      )}
+                      {appointment.documents.length === 0 ? (
+                        <p className="mt-2 text-sm leading-6 text-[#878787]">
+                          Nenhum documento vinculado a esta consulta.
+                        </p>
+                      ) : (
+                        <div className="mt-4 space-y-3">
+                          {appointment.documents.map((document) => (
+                            <div
+                              key={document.id}
+                              className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                              <div>
+                                <p className="font-bold text-[#08553F]">
+                                  {document.name}
+                                </p>
 
-                      {appointment.medicalRecord.prescription && (
-                        <div className="rounded-2xl bg-white p-4">
-                          <p className="text-sm font-bold text-[#08553F]">
-                            Prescrição / orientação terapêutica
-                          </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#878787]">
-                            {appointment.medicalRecord.prescription}
-                          </p>
+                                {document.fileType && (
+                                  <p className="text-sm text-[#878787]">
+                                    {document.fileType}
+                                  </p>
+                                )}
+                              </div>
+
+                              <a
+                                href={document.fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                              >
+                                Abrir →
+                              </a>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <p className="mt-4 text-sm text-[#878787]">
-                      Nenhum prontuário foi registrado para esta consulta.
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
-                  <h3 className="font-extrabold text-[#08553F]">
-                    Documentos desta consulta
-                  </h3>
-
-                  <div className="mt-4 space-y-3">
-                    {appointment.documents.length === 0 && (
-                      <p className="text-sm text-[#878787]">
-                        Nenhum documento vinculado a esta consulta.
-                      </p>
-                    )}
-
-                    {appointment.documents.map((document) => (
-                      <div
-                        key={document.id}
-                        className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <p className="font-bold text-[#08553F]">
-                            {document.name}
-                          </p>
-
-                          {document.fileType && (
-                            <p className="text-sm text-[#878787]">
-                              {document.fileType}
-                            </p>
-                          )}
-                        </div>
-
-                        <a
-                          href={document.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex w-fit rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                        >
-                          Abrir documento →
-                        </a>
-                      </div>
-                    ))}
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </section>
