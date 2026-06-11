@@ -5,6 +5,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
+const sessionCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
+  sameSite: "lax" as const,
+};
+
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "").trim();
@@ -49,22 +57,15 @@ export async function loginAction(formData: FormData) {
 
   const cookieStore = await cookies();
 
-  const cookieOptions = {
-    httpOnly: true,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-    sameSite: "lax" as const,
-  };
-
-  cookieStore.set("userId", user.id, cookieOptions);
-  cookieStore.set("userRole", user.role, cookieOptions);
+  cookieStore.set("userId", user.id, sessionCookieOptions);
+  cookieStore.set("userRole", user.role, sessionCookieOptions);
 
   const hasPatientProfile = Boolean(user.patient);
   const hasApprovedDoctorProfile =
     Boolean(user.doctor) && user.doctor?.approvalStatus === "APPROVED";
 
   if (user.role === "ADMIN") {
-    cookieStore.set("activeProfile", "ADMIN", cookieOptions);
+    cookieStore.set("activeProfile", "ADMIN", sessionCookieOptions);
     redirect("/dashboard/admin");
   }
 
@@ -73,10 +74,10 @@ export async function loginAction(formData: FormData) {
   }
 
   if (hasApprovedDoctorProfile || user.role === "DOCTOR") {
-    cookieStore.set("activeProfile", "DOCTOR", cookieOptions);
+    cookieStore.set("activeProfile", "DOCTOR", sessionCookieOptions);
     redirect("/dashboard/medico");
   }
 
-  cookieStore.set("activeProfile", "PATIENT", cookieOptions);
+  cookieStore.set("activeProfile", "PATIENT", sessionCookieOptions);
   redirect("/dashboard/paciente");
 }

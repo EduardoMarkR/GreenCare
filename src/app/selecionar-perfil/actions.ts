@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 
 type ActiveProfile = "PATIENT" | "DOCTOR";
 
-const cookieOptions = {
+const sessionCookieOptions = {
   httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
   path: "/",
   maxAge: 60 * 60 * 24 * 7,
   sameSite: "lax" as const,
@@ -49,7 +50,7 @@ export async function selectProfile(formData: FormData) {
       redirect("/");
     }
 
-    cookieStore.set("activeProfile", "PATIENT", cookieOptions);
+    cookieStore.set("activeProfile", "PATIENT", sessionCookieOptions);
     redirect("/dashboard/paciente");
   }
 
@@ -58,7 +59,7 @@ export async function selectProfile(formData: FormData) {
       redirect("/");
     }
 
-    cookieStore.set("activeProfile", "DOCTOR", cookieOptions);
+    cookieStore.set("activeProfile", "DOCTOR", sessionCookieOptions);
     redirect("/dashboard/medico");
   }
 
