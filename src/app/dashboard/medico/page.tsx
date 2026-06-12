@@ -99,7 +99,7 @@ export default async function DashboardMedicoPage() {
         <CannaPageHero
           badge="Área médica"
           title={`Olá, ${doctor.user.name}`}
-          description="Gerencie sua agenda, disponibilidade e consultas recebidas em uma experiência profissional e organizada."
+          description="Gerencie sua agenda, disponibilidade, consultas e resumo financeiro em uma experiência profissional e organizada."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -130,6 +130,13 @@ export default async function DashboardMedicoPage() {
               className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-[#00CF7B] hover:text-[#08553F]"
             >
               Minhas consultas
+            </Link>
+
+            <Link
+              href="/dashboard/medico/financeiro"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Financeiro
             </Link>
 
             <Link
@@ -190,7 +197,7 @@ export default async function DashboardMedicoPage() {
             </div>
           </div>
 
-          <div className="mt-10 grid items-stretch gap-6 lg:grid-cols-3">
+          <div className="mt-10 grid items-stretch gap-6 lg:grid-cols-4">
             <Link
               href="/dashboard/medico/perfil"
               className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
@@ -262,6 +269,31 @@ export default async function DashboardMedicoPage() {
 
                 <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Ver consultas →
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/dashboard/medico/financeiro"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="h-2 bg-gradient-to-r from-[#00CF7B] to-[#F3EFA1]" />
+
+              <div className="flex h-full flex-col p-6">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#00CF7B]/15 text-2xl">
+                  💰
+                </div>
+
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Financeiro
+                </h2>
+
+                <p className="mt-2 text-[#878787]">
+                  Acompanhe consultas concluídas e o total estimado do mês.
+                </p>
+
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                  Ver financeiro →
                 </p>
               </div>
             </Link>
