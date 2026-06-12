@@ -1,5 +1,7 @@
 "use server";
 
+import { sendEmail } from "@/lib/email";
+import { appointmentCancelledEmail } from "@/lib/email-templates";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -40,6 +42,19 @@ export async function cancelPatientAppointment(formData: FormData) {
       id: appointmentId,
       patientId: patient.id,
     },
+    include: {
+      patient: {
+        include: {
+          user: true,
+        },
+      },
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+      availability: true,
+    },
   });
 
   if (!appointment) {
@@ -54,14 +69,52 @@ export async function cancelPatientAppointment(formData: FormData) {
     );
   }
 
-  await prisma.appointment.update({
+  const updatedAppointment = await prisma.appointment.update({
     where: {
       id: appointment.id,
     },
     data: {
       status: "CANCELLED",
     },
+    include: {
+      patient: {
+        include: {
+          user: true,
+        },
+      },
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+      availability: true,
+    },
   });
+
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    const date = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "UTC",
+    }).format(updatedAppointment.date);
+
+    const time = updatedAppointment.availability?.startTime ?? "";
+
+    await sendEmail({
+      to: updatedAppointment.doctor.user.email,
+      subject: "Consulta cancelada pelo paciente | CannaDoctor",
+      html: appointmentCancelledEmail({
+        title: "Consulta cancelada pelo paciente",
+        name: updatedAppointment.doctor.user.name,
+        message: `${updatedAppointment.patient.user.name} cancelou a consulta agendada.`,
+        date,
+        time,
+        dashboardUrl: `${appUrl}/medico/consultas`,
+      }),
+    });
+  } catch (error) {
+    console.error("Erro ao enviar e-mail de cancelamento para o médico:", error);
+  }
 
   revalidatePath("/dashboard/paciente");
   revalidatePath("/medico/consultas");
