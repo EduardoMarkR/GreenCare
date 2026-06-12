@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { createGoogleMeetEvent } from "@/lib/google-meet";
 
 export async function createAppointment(formData: FormData) {
   const availabilityId = String(formData.get("availabilityId") ?? "");
@@ -48,6 +49,14 @@ export async function createAppointment(formData: FormData) {
     redirect("/medicos");
   }
 
+  const now = new Date();
+
+  if (availability.date < now) {
+    redirect(
+      `/medicos/${availability.doctorId}?erro=Este horário já passou e não está mais disponível.`
+    );
+  }
+
   const existingAppointmentForAvailability = await prisma.appointment.findFirst({
     where: {
       availabilityId: availability.id,
@@ -79,14 +88,6 @@ export async function createAppointment(formData: FormData) {
         },
       },
     },
-    include: {
-      doctor: {
-        include: {
-          user: true,
-        },
-      },
-      availability: true,
-    },
   });
 
   if (conflictingPatientAppointment) {
@@ -95,7 +96,7 @@ export async function createAppointment(formData: FormData) {
     );
   }
 
-  await prisma.appointment.create({
+  const appointment = await prisma.appointment.create({
     data: {
       patientId: patient.id,
       doctorId: availability.doctorId,
@@ -105,6 +106,14 @@ export async function createAppointment(formData: FormData) {
       notes,
     },
   });
+
+  try {
+    await createGoogleMeetEvent({
+      appointmentId: appointment.id,
+    });
+  } catch (error) {
+    console.error("Erro ao criar Google Meet:", error);
+  }
 
   redirect("/dashboard/paciente");
 }

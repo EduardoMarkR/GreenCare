@@ -62,9 +62,14 @@ export default async function DoctorPage({ params }: Props) {
     .map((appointment) => appointment.availabilityId)
     .filter((availabilityId): availabilityId is string => Boolean(availabilityId));
 
+  const now = new Date();
+
   const availabilities = await prisma.availability.findMany({
     where: {
       doctorId: doctor.id,
+      date: {
+        gte: now,
+      },
       id: {
         notIn: unavailableAvailabilityIds,
       },

@@ -11,6 +11,11 @@ type DashboardPacientePageProps = {
   searchParams?: Promise<{
     erro?: string;
     cancelar?: string;
+    busca?: string;
+    status?: string;
+    dataInicio?: string;
+    dataFim?: string;
+    pagina?: string;
   }>;
 };
 
@@ -46,12 +51,39 @@ function getDoctorStatusLabel(status: string) {
   return status;
 }
 
+function buildPaginationHref(params: {
+  busca: string;
+  statusFiltro: string;
+  dataInicio: string;
+  dataFim: string;
+  pagina: number;
+}) {
+  const search = new URLSearchParams();
+
+  if (params.busca) search.set("busca", params.busca);
+  if (params.statusFiltro) search.set("status", params.statusFiltro);
+  if (params.dataInicio) search.set("dataInicio", params.dataInicio);
+  if (params.dataFim) search.set("dataFim", params.dataFim);
+
+  search.set("pagina", String(params.pagina));
+
+  return `/dashboard/paciente?${search.toString()}`;
+}
+
 export default async function DashboardPacientePage({
   searchParams,
 }: DashboardPacientePageProps) {
   const params = await searchParams;
+
   const erro = params?.erro;
   const appointmentToCancelId = params?.cancelar;
+
+  const busca = params?.busca?.trim() ?? "";
+  const statusFiltro = params?.status ?? "";
+  const dataInicio = params?.dataInicio ?? "";
+  const dataFim = params?.dataFim ?? "";
+  const paginaAtual = Math.max(Number(params?.pagina ?? "1"), 1);
+  const itensPorPagina = 5;
 
   const cookieStore = await cookies();
 
@@ -97,8 +129,52 @@ export default async function DashboardPacientePage({
     },
   });
 
+  const whereConsultas = {
+    patientId: patient.id,
+    ...(statusFiltro
+      ? {
+          status: statusFiltro as
+            | "PENDING"
+            | "CONFIRMED"
+            | "CANCELLED"
+            | "COMPLETED",
+        }
+      : {}),
+    ...(dataInicio || dataFim
+      ? {
+          date: {
+            ...(dataInicio
+              ? { gte: new Date(`${dataInicio}T00:00:00`) }
+              : {}),
+            ...(dataFim ? { lte: new Date(`${dataFim}T23:59:59`) } : {}),
+          },
+        }
+      : {}),
+    ...(busca
+      ? {
+          doctor: {
+            user: {
+              name: {
+                contains: busca,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        }
+      : {}),
+  };
+
+  const totalConsultasFiltradas = await prisma.appointment.count({
+    where: whereConsultas,
+  });
+
+  const totalPaginas = Math.max(
+    Math.ceil(totalConsultasFiltradas / itensPorPagina),
+    1
+  );
+
   const proximasConsultas = await prisma.appointment.findMany({
-    where: { patientId: patient.id },
+    where: whereConsultas,
     include: {
       availability: true,
       medicalRecord: true,
@@ -111,7 +187,7 @@ export default async function DashboardPacientePage({
     },
     orderBy: [
       {
-        date: "asc",
+        date: "desc",
       },
       {
         availability: {
@@ -119,13 +195,28 @@ export default async function DashboardPacientePage({
         },
       },
     ],
-    take: 5,
+    skip: (paginaAtual - 1) * itensPorPagina,
+    take: itensPorPagina,
   });
 
   const appointmentToCancel = appointmentToCancelId
-    ? proximasConsultas.find(
-        (appointment) => appointment.id === appointmentToCancelId
-      )
+    ? await prisma.appointment.findFirst({
+        where: {
+          id: appointmentToCancelId,
+          patientId: patient.id,
+          status: {
+            in: ["PENDING", "CONFIRMED"],
+          },
+        },
+        include: {
+          availability: true,
+          doctor: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      })
     : null;
 
   return (
@@ -415,8 +506,7 @@ export default async function DashboardPacientePage({
                 </h2>
 
                 <p className="mt-2 text-[#878787]">
-                  Veja suas próximas consultas, histórico, prontuários e receitas
-                  liberadas.
+                  Busque consultas por médico, status ou período.
                 </p>
               </div>
 
@@ -428,6 +518,62 @@ export default async function DashboardPacientePage({
               </Link>
             </div>
 
+            <form className="mt-6 grid gap-3 rounded-2xl bg-[#F7F4E7] p-4 md:grid-cols-5">
+              <input
+                type="text"
+                name="busca"
+                defaultValue={busca}
+                placeholder="Buscar médico"
+                className="rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 py-3 text-sm text-[#08553F] outline-none focus:border-[#00CF7B]"
+              />
+
+              <select
+                name="status"
+                defaultValue={statusFiltro}
+                className="rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 py-3 text-sm text-[#08553F] outline-none focus:border-[#00CF7B]"
+              >
+                <option value="">Todos os status</option>
+                <option value="PENDING">Pendente</option>
+                <option value="CONFIRMED">Confirmada</option>
+                <option value="CANCELLED">Cancelada</option>
+                <option value="COMPLETED">Concluída</option>
+              </select>
+
+              <input
+                type="date"
+                name="dataInicio"
+                defaultValue={dataInicio}
+                className="rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 py-3 text-sm text-[#08553F] outline-none focus:border-[#00CF7B]"
+              />
+
+              <input
+                type="date"
+                name="dataFim"
+                defaultValue={dataFim}
+                className="rounded-2xl border border-[#C6C6C6]/70 bg-white px-4 py-3 text-sm text-[#08553F] outline-none focus:border-[#00CF7B]"
+              />
+
+              <button
+                type="submit"
+                className="rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+              >
+                Filtrar
+              </button>
+            </form>
+
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-[#878787]">
+                {totalConsultasFiltradas} consulta(s) encontrada(s)
+              </p>
+
+              <Link
+                href="/dashboard/paciente"
+                className="text-sm font-bold text-[#08553F] hover:text-[#00CF7B]"
+              >
+                Limpar filtros
+              </Link>
+            </div>
+
             <div className="mt-6 space-y-4">
               {proximasConsultas.length === 0 && (
                 <div className="rounded-2xl bg-[#F7F4E7] p-5">
@@ -436,7 +582,7 @@ export default async function DashboardPacientePage({
                   </p>
 
                   <p className="mt-2 text-sm text-[#878787]">
-                    Quando você agendar uma consulta, ela aparecerá aqui.
+                    Ajuste os filtros ou agende uma nova consulta.
                   </p>
                 </div>
               )}
@@ -485,7 +631,7 @@ export default async function DashboardPacientePage({
                             </p>
 
                             <p className="mt-1 text-sm text-[#878787]">
-                              O médico adicionou o link da teleconsulta.
+                              Link da teleconsulta disponível.
                             </p>
 
                             <a
@@ -562,6 +708,46 @@ export default async function DashboardPacientePage({
                 </div>
               ))}
             </div>
+
+            {totalPaginas > 1 && (
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-[#878787]">
+                  Página {paginaAtual} de {totalPaginas}
+                </p>
+
+                <div className="flex gap-2">
+                  {paginaAtual > 1 && (
+                    <Link
+                      href={buildPaginationHref({
+                        busca,
+                        statusFiltro,
+                        dataInicio,
+                        dataFim,
+                        pagina: paginaAtual - 1,
+                      })}
+                      className="rounded-2xl bg-white px-4 py-2 text-sm font-bold text-[#08553F] ring-1 ring-[#C6C6C6]/70 transition hover:bg-[#F3EFA1]"
+                    >
+                      ← Anterior
+                    </Link>
+                  )}
+
+                  {paginaAtual < totalPaginas && (
+                    <Link
+                      href={buildPaginationHref({
+                        busca,
+                        statusFiltro,
+                        dataInicio,
+                        dataFim,
+                        pagina: paginaAtual + 1,
+                      })}
+                      className="rounded-2xl bg-white px-4 py-2 text-sm font-bold text-[#08553F] ring-1 ring-[#C6C6C6]/70 transition hover:bg-[#F3EFA1]"
+                    >
+                      Próxima →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </main>

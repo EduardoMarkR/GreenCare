@@ -149,6 +149,13 @@ export default async function HorariosPage({ searchParams }: HorariosPageProps) 
             >
               Minhas consultas
             </Link>
+
+            <Link
+              href="/dashboard/medico/integracoes"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Integrações
+            </Link>
           </div>
 
           <div className="grid gap-4">
