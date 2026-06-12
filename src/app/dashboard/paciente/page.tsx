@@ -276,7 +276,7 @@ export default async function DashboardPacientePage({
             </div>
           </div>
 
-          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-2">
+          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-3">
             <Link
               href="/dashboard/paciente/documentos"
               className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
@@ -298,6 +298,31 @@ export default async function DashboardPacientePage({
 
                 <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Acessar documentos →
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/dashboard/paciente/receitas"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#F3EFA1]" />
+
+              <div className="flex h-full flex-col p-6">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
+                  📄
+                </div>
+
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Minhas receitas
+                </h2>
+
+                <p className="mt-2 text-[#878787]">
+                  Acesse receitas médicas emitidas após suas consultas concluídas.
+                </p>
+
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                  Acessar receitas →
                 </p>
               </div>
             </Link>
