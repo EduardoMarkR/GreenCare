@@ -10,7 +10,9 @@ export async function createPatientAccount(formData: FormData) {
   const password = String(formData.get("password") ?? "").trim();
 
   if (!name || !email || !password) {
-    throw new Error("Preencha nome, e-mail e senha.");
+    redirect(
+      "/cadastro?erro=Preencha nome, e-mail e senha para criar sua conta."
+    );
   }
 
   const existingUser = await prisma.user.findUnique({
@@ -20,7 +22,7 @@ export async function createPatientAccount(formData: FormData) {
   });
 
   if (existingUser) {
-    throw new Error("Já existe uma conta cadastrada com este e-mail.");
+    redirect("/cadastro?erro=Já existe uma conta cadastrada com este e-mail.");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -37,5 +39,5 @@ export async function createPatientAccount(formData: FormData) {
     },
   });
 
-  redirect("/login");
+  redirect("/login?sucesso=Conta criada com sucesso. Faça login para continuar.");
 }

@@ -4,7 +4,18 @@ import Footer from "@/components/Footer";
 import CannaLeafPattern from "@/components/CannaLeafPattern";
 import { loginAction } from "./actions";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<{
+    erro?: string;
+    sucesso?: string;
+  }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const erro = params?.erro;
+  const sucesso = params?.sucesso;
+
   return (
     <>
       <Navbar />
@@ -56,6 +67,18 @@ export default function LoginPage() {
                 <p className="mt-2 text-[#878787]">
                   Acesse sua conta CannaDoctor.
                 </p>
+
+                {erro ? (
+                  <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                    {erro}
+                  </div>
+                ) : null}
+
+                {sucesso ? (
+                  <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-700">
+                    {sucesso}
+                  </div>
+                ) : null}
 
                 <form action={loginAction} className="mt-8 space-y-4">
                   <input

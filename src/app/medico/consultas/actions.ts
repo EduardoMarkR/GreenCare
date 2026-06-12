@@ -4,6 +4,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email";
+import {
+  appointmentCancelledEmail,
+  appointmentConfirmedPatientEmail,
+} from "@/lib/email-templates";
 
 type AppointmentStatus =
   | "PENDING"
@@ -63,6 +68,12 @@ function validateMeetingUrl(url: string) {
   }
 }
 
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export async function updateAppointmentStatus(formData: FormData) {
   const doctor = await getAuthenticatedDoctor();
 
@@ -82,6 +93,19 @@ export async function updateAppointmentStatus(formData: FormData) {
       id: appointmentId,
       doctorId: doctor.id,
     },
+    include: {
+      patient: {
+        include: {
+          user: true,
+        },
+      },
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+      availability: true,
+    },
   });
 
   if (!appointment) {
@@ -100,14 +124,66 @@ export async function updateAppointmentStatus(formData: FormData) {
     redirect("/medico/consultas");
   }
 
-  await prisma.appointment.update({
+  const updatedAppointment = await prisma.appointment.update({
     where: {
       id: appointment.id,
     },
     data: {
       status,
     },
+    include: {
+      patient: {
+        include: {
+          user: true,
+        },
+      },
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+      availability: true,
+    },
   });
+
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const date = formatDate(updatedAppointment.date);
+    const time = updatedAppointment.availability?.startTime ?? "";
+
+    if (status === "CONFIRMED") {
+      await sendEmail({
+        to: updatedAppointment.patient.user.email,
+        subject: "Sua consulta foi confirmada | CannaDoctor",
+        html: appointmentConfirmedPatientEmail({
+          patientName: updatedAppointment.patient.user.name,
+          doctorName: updatedAppointment.doctor.user.name,
+          date,
+          time,
+          meetUrl: updatedAppointment.meetingUrl,
+          dashboardUrl: `${appUrl}/dashboard/paciente`,
+        }),
+      });
+    }
+
+    if (status === "CANCELLED") {
+      await sendEmail({
+        to: updatedAppointment.patient.user.email,
+        subject: "Sua consulta foi cancelada | CannaDoctor",
+        html: appointmentCancelledEmail({
+          title: "Sua consulta foi cancelada",
+          name: updatedAppointment.patient.user.name,
+          message:
+            "Sua consulta foi cancelada pelo médico. Acesse seu painel para verificar outras opções de agendamento.",
+          date,
+          time,
+          dashboardUrl: `${appUrl}/dashboard/paciente`,
+        }),
+      });
+    }
+  } catch (error) {
+    console.error("Erro ao enviar e-mail de atualização da consulta:", error);
+  }
 
   revalidatePath("/medico/consultas");
   revalidatePath("/medico/historico");

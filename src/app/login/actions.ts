@@ -17,6 +17,10 @@ export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "").trim();
 
+  if (!email || !password) {
+    redirect("/login?erro=Informe seu e-mail e senha para entrar.");
+  }
+
   const user = await prisma.user.findUnique({
     where: {
       email,
@@ -28,7 +32,7 @@ export async function loginAction(formData: FormData) {
   });
 
   if (!user) {
-    throw new Error("E-mail ou senha inválidos.");
+    redirect("/login?erro=E-mail ou senha inválidos.");
   }
 
   const isBcryptHash =
@@ -39,7 +43,7 @@ export async function loginAction(formData: FormData) {
     : user.password === password;
 
   if (!passwordIsValid) {
-    throw new Error("E-mail ou senha inválidos.");
+    redirect("/login?erro=E-mail ou senha inválidos.");
   }
 
   if (!isBcryptHash) {

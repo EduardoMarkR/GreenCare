@@ -4,7 +4,18 @@ import Footer from "@/components/Footer";
 import CannaLeafPattern from "@/components/CannaLeafPattern";
 import { createPatientAccount } from "./actions";
 
-export default function CadastroPage() {
+type CadastroPageProps = {
+  searchParams?: Promise<{
+    erro?: string;
+  }>;
+};
+
+export default async function CadastroPage({
+  searchParams,
+}: CadastroPageProps) {
+  const params = await searchParams;
+  const erro = params?.erro;
+
   return (
     <>
       <Navbar />
@@ -68,6 +79,12 @@ export default function CadastroPage() {
                 <p className="mt-2 text-[#878787]">
                   Cadastre-se como paciente na CannaDoctor.
                 </p>
+
+                {erro ? (
+                  <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                    {erro}
+                  </div>
+                ) : null}
 
                 <form action={createPatientAccount} className="mt-8 space-y-4">
                   <input

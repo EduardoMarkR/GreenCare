@@ -4,6 +4,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createGoogleMeetEvent } from "@/lib/google-meet";
+import { sendEmail } from "@/lib/email";
+import { newAppointmentDoctorEmail } from "@/lib/email-templates";
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+  }).format(date);
+}
 
 export async function createAppointment(formData: FormData) {
   const availabilityId = String(formData.get("availabilityId") ?? "");
@@ -30,6 +38,9 @@ export async function createAppointment(formData: FormData) {
     where: {
       userId,
     },
+    include: {
+      user: true,
+    },
   });
 
   if (!patient) {
@@ -41,7 +52,11 @@ export async function createAppointment(formData: FormData) {
       id: availabilityId,
     },
     include: {
-      doctor: true,
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
     },
   });
 
@@ -113,6 +128,24 @@ export async function createAppointment(formData: FormData) {
     });
   } catch (error) {
     console.error("Erro ao criar Google Meet:", error);
+  }
+
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    await sendEmail({
+      to: availability.doctor.user.email,
+      subject: "Nova consulta agendada | CannaDoctor",
+      html: newAppointmentDoctorEmail({
+        doctorName: availability.doctor.user.name,
+        patientName: patient.user.name,
+        date: formatDate(availability.date),
+        time: availability.startTime,
+        dashboardUrl: `${appUrl}/dashboard/medico/consultas`,
+      }),
+    });
+  } catch (error) {
+    console.error("Erro ao enviar e-mail de nova consulta:", error);
   }
 
   redirect("/dashboard/paciente");
