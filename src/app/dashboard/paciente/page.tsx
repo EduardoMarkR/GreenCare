@@ -276,129 +276,133 @@ export default async function DashboardPacientePage({
             </div>
           </div>
 
-          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-3">
+          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Link
               href="/dashboard/paciente/documentos"
-              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
-              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
-
-              <div className="flex h-full flex-col p-6">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
-                  📎
-                </div>
-
-                <h2 className="text-xl font-extrabold text-[#08553F]">
-                  Meus documentos
-                </h2>
-
-                <p className="mt-2 text-[#878787]">
-                  Envie e acompanhe seus documentos médicos com segurança.
-                </p>
-
-                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
-                  Acessar documentos →
-                </p>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
+                📎
               </div>
+
+              <h2 className="text-lg font-extrabold text-[#08553F]">
+                Documentos
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#878787]">
+                Envie e acompanhe seus documentos médicos.
+              </p>
+
+              <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                Acessar →
+              </p>
             </Link>
 
             <Link
               href="/dashboard/paciente/receitas"
-              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
-              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#F3EFA1]" />
-
-              <div className="flex h-full flex-col p-6">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
-                  📄
-                </div>
-
-                <h2 className="text-xl font-extrabold text-[#08553F]">
-                  Minhas receitas
-                </h2>
-
-                <p className="mt-2 text-[#878787]">
-                  Acesse receitas médicas emitidas após suas consultas concluídas.
-                </p>
-
-                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
-                  Acessar receitas →
-                </p>
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
+                📄
               </div>
+
+              <h2 className="text-lg font-extrabold text-[#08553F]">
+                Receitas
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#878787]">
+                Acesse receitas médicas emitidas.
+              </p>
+
+              <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                Acessar →
+              </p>
+            </Link>
+
+            <Link
+              href="/dashboard/paciente/historico"
+              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
+                🗂️
+              </div>
+
+              <h2 className="text-lg font-extrabold text-[#08553F]">
+                Histórico
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#878787]">
+                Consulte consultas encerradas e PDFs.
+              </p>
+
+              <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                Acessar →
+              </p>
             </Link>
 
             {!doctor && (
               <Link
                 href="/dashboard/paciente/solicitar-medico"
-                className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
               >
-                <div className="h-2 bg-gradient-to-r from-[#F3EFA1] to-[#00CF7B]" />
-
-                <div className="flex h-full flex-col p-6">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
-                    ⚕️
-                  </div>
-
-                  <h2 className="text-xl font-extrabold text-[#08553F]">
-                    Quero atender como médico
-                  </h2>
-
-                  <p className="mt-2 text-[#878787]">
-                    Possui CRM e deseja oferecer consultas pela plataforma?
-                    Envie sua candidatura para análise.
-                  </p>
-
-                  <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
-                    Solicitar cadastro médico →
-                  </p>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
+                  ⚕️
                 </div>
+
+                <h2 className="text-lg font-extrabold text-[#08553F]">
+                  Quero atender
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-[#878787]">
+                  Solicite cadastro médico para análise.
+                </p>
+
+                <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                  Solicitar →
+                </p>
               </Link>
             )}
 
             {doctor && (
-              <div className="h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm">
-                <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#00CF7B]" />
-
-                <div className="flex h-full flex-col p-6">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
-                    ⚕️
-                  </div>
-
-                  <h2 className="text-xl font-extrabold text-[#08553F]">
-                    Cadastro médico
-                  </h2>
-
-                  <p className="mt-2 text-[#878787]">
-                    Status da sua candidatura:{" "}
-                    <strong className="text-[#08553F]">
-                      {getDoctorStatusLabel(doctor.approvalStatus)}
-                    </strong>
-                  </p>
-
-                  {doctor.approvalStatus === "APPROVED" && (
-                    <Link
-                      href="/dashboard/medico"
-                      className="mt-auto inline-flex w-fit rounded-2xl bg-[#08553F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                    >
-                      Acessar painel médico
-                    </Link>
-                  )}
-
-                  {doctor.approvalStatus === "PENDING" && (
-                    <p className="mt-auto rounded-2xl bg-[#F3EFA1] p-4 text-sm font-semibold text-[#08553F]">
-                      Sua solicitação está aguardando análise da administração.
-                    </p>
-                  )}
-
-                  {doctor.approvalStatus === "REJECTED" && (
-                    <Link
-                      href="/dashboard/medico/perfil"
-                      className="mt-auto inline-flex w-fit rounded-2xl bg-[#F3EFA1] px-5 py-3 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
-                    >
-                      Revisar perfil médico
-                    </Link>
-                  )}
+              <div className="overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F7F4E7] text-2xl">
+                  ⚕️
                 </div>
+
+                <h2 className="text-lg font-extrabold text-[#08553F]">
+                  Cadastro médico
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-[#878787]">
+                  Status:{" "}
+                  <strong className="text-[#08553F]">
+                    {getDoctorStatusLabel(doctor.approvalStatus)}
+                  </strong>
+                </p>
+
+                {doctor.approvalStatus === "APPROVED" && (
+                  <Link
+                    href="/dashboard/medico"
+                    className="mt-5 inline-flex rounded-2xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                  >
+                    Acessar painel
+                  </Link>
+                )}
+
+                {doctor.approvalStatus === "PENDING" && (
+                  <p className="mt-5 rounded-2xl bg-[#F3EFA1] p-3 text-sm font-semibold text-[#08553F]">
+                    Aguardando análise.
+                  </p>
+                )}
+
+                {doctor.approvalStatus === "REJECTED" && (
+                  <Link
+                    href="/dashboard/medico/perfil"
+                    className="mt-5 inline-flex rounded-2xl bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                  >
+                    Revisar perfil
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -495,44 +499,44 @@ export default async function DashboardPacientePage({
                           </div>
                         )}
 
-                      {(appointment.status === "COMPLETED" &&
+                      {appointment.status === "COMPLETED" &&
                         (appointment.medicalRecord ||
-                          appointment.prescription)) && (
-                        <div className="mt-5 rounded-2xl border border-[#C6C6C6]/60 bg-white p-4">
-                          <p className="font-extrabold text-[#08553F]">
-                            Documentos da consulta
-                          </p>
+                          appointment.prescription) && (
+                          <div className="mt-5 rounded-2xl border border-[#C6C6C6]/60 bg-white p-4">
+                            <p className="font-extrabold text-[#08553F]">
+                              Documentos da consulta
+                            </p>
 
-                          <p className="mt-2 text-sm text-[#878787]">
-                            Os documentos desta consulta estão disponíveis em
-                            PDF.
-                          </p>
+                            <p className="mt-2 text-sm text-[#878787]">
+                              Os documentos desta consulta estão disponíveis em
+                              PDF.
+                            </p>
 
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {appointment.medicalRecord && (
-                              <a
-                                href={`/api/prontuario/${appointment.id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                              >
-                                Abrir prontuário PDF →
-                              </a>
-                            )}
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {appointment.medicalRecord && (
+                                <a
+                                  href={`/api/prontuario/${appointment.id}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                                >
+                                  Abrir prontuário PDF →
+                                </a>
+                              )}
 
-                            {appointment.prescription && (
-                              <a
-                                href={`/api/receita/${appointment.id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
-                              >
-                                Abrir receita PDF →
-                              </a>
-                            )}
+                              {appointment.prescription && (
+                                <a
+                                  href={`/api/receita/${appointment.id}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                                >
+                                  Abrir receita PDF →
+                                </a>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-3 md:items-end">

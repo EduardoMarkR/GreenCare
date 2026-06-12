@@ -41,12 +41,12 @@ model User {
 }
 
 model Patient {
-  id        String   @id @default(uuid())
-  userId    String   @unique
+  id        String    @id @default(uuid())
+  userId    String    @unique
   birthDate DateTime?
   phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   appointments   Appointment[]
@@ -70,11 +70,12 @@ model Doctor {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  appointments   Appointment[]
-  availabilities Availability[]
-  medicalRecords MedicalRecord[]
-  prescriptions  Prescription[]
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments             Appointment[]
+  availabilities           Availability[]
+  medicalRecords           MedicalRecord[]
+  prescriptions            Prescription[]
+  googleCalendarConnection GoogleCalendarConnection? @relation("DoctorGoogleCalendarConnection")
 }
 
 model Availability {
@@ -169,6 +170,21 @@ model Prescription {
   dosage       String
   quantity     String?
   instructions String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GoogleCalendarConnection {
+  id       String @id @default(uuid())
+  doctorId String @unique
+
+  doctor Doctor @relation("DoctorGoogleCalendarConnection", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  googleEmail  String?
+  accessToken  String
+  refreshToken String
+  expiryDate   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
