@@ -59,14 +59,19 @@ export default async function DashboardAdminPage() {
     approvedDoctors,
     pendingDoctors,
     rejectedDoctors,
+    connectedDoctors,
     totalPatients,
     totalAppointments,
     pendingAppointments,
     confirmedAppointments,
     cancelledAppointments,
     completedAppointments,
+    totalMeetAppointments,
+    appointmentsWithoutMeet,
     totalDocuments,
     totalAuditLogs,
+    totalMedicalRecords,
+    totalPrescriptions,
     revenueAppointments,
     recentAppointments,
     recentDoctors,
@@ -78,14 +83,38 @@ export default async function DashboardAdminPage() {
     prisma.doctor.count({ where: { approvalStatus: "APPROVED" } }),
     prisma.doctor.count({ where: { approvalStatus: "PENDING" } }),
     prisma.doctor.count({ where: { approvalStatus: "REJECTED" } }),
+    prisma.doctor.count({
+      where: {
+        googleCalendarConnection: {
+          isNot: null,
+        },
+      },
+    }),
     prisma.patient.count(),
     prisma.appointment.count(),
     prisma.appointment.count({ where: { status: "PENDING" } }),
     prisma.appointment.count({ where: { status: "CONFIRMED" } }),
     prisma.appointment.count({ where: { status: "CANCELLED" } }),
     prisma.appointment.count({ where: { status: "COMPLETED" } }),
+    prisma.appointment.count({
+      where: {
+        meetingUrl: {
+          not: null,
+        },
+      },
+    }),
+    prisma.appointment.count({
+      where: {
+        status: {
+          in: ["PENDING", "CONFIRMED"],
+        },
+        meetingUrl: null,
+      },
+    }),
     prisma.document.count(),
     prisma.auditLog.count(),
+    prisma.medicalRecord.count(),
+    prisma.prescription.count(),
     prisma.appointment.findMany({
       where: {
         status: {
@@ -98,6 +127,9 @@ export default async function DashboardAdminPage() {
     }),
     prisma.appointment.findMany({
       include: {
+        availability: true,
+        medicalRecord: true,
+        prescription: true,
         patient: {
           include: {
             user: true,
@@ -120,6 +152,7 @@ export default async function DashboardAdminPage() {
       },
       include: {
         user: true,
+        googleCalendarConnection: true,
       },
       orderBy: {
         createdAt: "desc",
@@ -154,6 +187,11 @@ export default async function DashboardAdminPage() {
     return total + Number(appointment.doctor.price);
   }, 0);
 
+  const averageTicket =
+    revenueAppointments.length > 0
+      ? estimatedRevenue / revenueAppointments.length
+      : 0;
+
   const quickActions = [
     {
       title: "Médicos",
@@ -171,23 +209,23 @@ export default async function DashboardAdminPage() {
     },
     {
       title: "Consultas",
-      description: "Acompanhar agendamentos e status.",
+      description: "Acompanhar agendamentos, Meet e status.",
       href: "/dashboard/admin/consultas",
       icon: "📅",
       style: "bg-[#08553F] text-white",
+    },
+    {
+      title: "Integrações",
+      description: "Google Calendar e teleconsultas.",
+      href: "/dashboard/admin/integracoes",
+      icon: "🔗",
+      style: "bg-white text-[#08553F]",
     },
     {
       title: "Documentos",
       description: "Visualizar arquivos enviados por pacientes.",
       href: "/dashboard/admin/documentos",
       icon: "📎",
-      style: "bg-white text-[#08553F]",
-    },
-    {
-      title: "Usuários",
-      description: "Gerenciar permissões e contas.",
-      href: "/dashboard/admin/usuarios",
-      icon: "👥",
       style: "bg-white text-[#08553F]",
     },
     {
@@ -225,6 +263,30 @@ export default async function DashboardAdminPage() {
       gradient: "from-[#F3EFA1] to-[#00CF7B]",
     },
     {
+      title: "Google conectado",
+      value: connectedDoctors,
+      helper: `${totalDoctors} médicos cadastrados`,
+      href: "/dashboard/admin/integracoes",
+      icon: "🔗",
+      gradient: "from-orange-400 to-orange-700",
+    },
+    {
+      title: "Teleconsultas",
+      value: totalMeetAppointments,
+      helper: "Consultas com Google Meet",
+      href: "/dashboard/admin/consultas",
+      icon: "🎥",
+      gradient: "from-cyan-400 to-cyan-700",
+    },
+    {
+      title: "Consultas sem Meet",
+      value: appointmentsWithoutMeet,
+      helper: "Pendentes/confirmadas sem link",
+      href: "/dashboard/admin/consultas",
+      icon: "⚠️",
+      gradient: "from-red-400 to-red-700",
+    },
+    {
       title: "Consultas",
       value: totalAppointments,
       helper: `${pendingAppointments} pendentes`,
@@ -248,6 +310,30 @@ export default async function DashboardAdminPage() {
       icon: "💰",
       gradient: "from-emerald-400 to-emerald-700",
     },
+    {
+      title: "Ticket médio",
+      value: formatCurrency(averageTicket),
+      helper: "Média por consulta paga",
+      href: "/dashboard/admin/consultas",
+      icon: "💵",
+      gradient: "from-lime-400 to-lime-700",
+    },
+    {
+      title: "Prontuários",
+      value: totalMedicalRecords,
+      helper: "Prontuários emitidos",
+      href: "/dashboard/admin/consultas",
+      icon: "🗂️",
+      gradient: "from-indigo-400 to-indigo-700",
+    },
+    {
+      title: "Receitas",
+      value: totalPrescriptions,
+      helper: "Receitas cadastradas",
+      href: "/dashboard/admin/consultas",
+      icon: "📄",
+      gradient: "from-pink-400 to-pink-700",
+    },
   ];
 
   return (
@@ -258,7 +344,7 @@ export default async function DashboardAdminPage() {
         <CannaPageHero
           badge="Administração"
           title="Central de controle"
-          description="Acompanhe indicadores, aprovações, consultas, documentos e auditoria da plataforma em tempo real."
+          description="Acompanhe indicadores, aprovações, consultas, Google Meet, documentos e auditoria da plataforma em tempo real."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -334,9 +420,9 @@ export default async function DashboardAdminPage() {
                 </h2>
 
                 <p className="mt-4 leading-7 text-white/75">
-                  O MVP já possui autenticação segura, dashboards, agenda,
-                  consultas, documentos, teleconsulta, auditoria e gestão
-                  administrativa.
+                  O sistema já possui autenticação por perfil, dashboards,
+                  agenda médica, Google Calendar, Google Meet, documentos,
+                  prontuários, receitas e auditoria.
                 </p>
 
                 <div className="mt-6 grid gap-4">
@@ -357,6 +443,16 @@ export default async function DashboardAdminPage() {
 
                     <p className="mt-1 text-3xl font-extrabold">
                       {pendingAppointments}
+                    </p>
+                  </div>
+
+                  <div className="rounded-3xl bg-white/10 p-5">
+                    <p className="text-sm font-semibold text-white/70">
+                      Médicos com Google
+                    </p>
+
+                    <p className="mt-1 text-3xl font-extrabold">
+                      {connectedDoctors}
                     </p>
                   </div>
 
@@ -407,6 +503,7 @@ export default async function DashboardAdminPage() {
                   ["Médicos aprovados", approvedDoctors, totalDoctors, "#00CF7B"],
                   ["Médicos pendentes", pendingDoctors, totalDoctors, "#F3EFA1"],
                   ["Médicos reprovados", rejectedDoctors, totalDoctors, "#ef4444"],
+                  ["Médicos com Google", connectedDoctors, totalDoctors, "#f97316"],
                   [
                     "Consultas pendentes",
                     pendingAppointments,
@@ -418,6 +515,12 @@ export default async function DashboardAdminPage() {
                     confirmedAppointments,
                     totalAppointments,
                     "#00CF7B",
+                  ],
+                  [
+                    "Consultas com Meet",
+                    totalMeetAppointments,
+                    totalAppointments,
+                    "#06b6d4",
                   ],
                   [
                     "Consultas canceladas",
@@ -491,6 +594,19 @@ export default async function DashboardAdminPage() {
                 </Link>
 
                 <Link
+                  href="/dashboard/admin/consultas"
+                  className="block rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
+                >
+                  <p className="text-sm font-bold text-[#878787]">
+                    Consultas ativas sem Meet
+                  </p>
+
+                  <p className="mt-2 text-4xl font-extrabold text-[#08553F]">
+                    {appointmentsWithoutMeet}
+                  </p>
+                </Link>
+
+                <Link
                   href="/dashboard/admin/documentos"
                   className="block rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
                 >
@@ -515,7 +631,7 @@ export default async function DashboardAdminPage() {
                   </h2>
 
                   <p className="mt-2 text-[#878787]">
-                    Agendamentos mais recentes da plataforma.
+                    Agendamentos recentes com status, horário e teleconsulta.
                   </p>
                 </div>
 
@@ -541,7 +657,7 @@ export default async function DashboardAdminPage() {
                     key={appointment.id}
                     className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
                   >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div>
                         <p className="font-extrabold text-[#08553F]">
                           Paciente: {appointment.patient.user.name}
@@ -554,6 +670,46 @@ export default async function DashboardAdminPage() {
                         <p className="mt-1 text-sm font-bold text-[#08553F]">
                           Data: {formatDate(appointment.date)}
                         </p>
+
+                        {appointment.availability ? (
+                          <p className="mt-1 text-sm font-bold text-[#08553F]">
+                            Horário: {appointment.availability.startTime} às{" "}
+                            {appointment.availability.endTime}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-sm font-bold text-[#878787]">
+                            Horário não informado
+                          </p>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {appointment.meetingUrl ? (
+                            <a
+                              href={appointment.meetingUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                            >
+                              Abrir Meet →
+                            </a>
+                          ) : (
+                            <span className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
+                              Sem Meet
+                            </span>
+                          )}
+
+                          {appointment.medicalRecord && (
+                            <span className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700">
+                              Prontuário
+                            </span>
+                          )}
+
+                          {appointment.prescription && (
+                            <span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-bold text-purple-700">
+                              Receita
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <span
@@ -608,6 +764,12 @@ export default async function DashboardAdminPage() {
 
                       <p className="mt-1 text-sm text-[#878787]">
                         CRM {doctor.crm}/{doctor.crmUf} • {doctor.specialty}
+                      </p>
+
+                      <p className="mt-2 text-xs font-bold text-[#08553F]">
+                        {doctor.googleCalendarConnection
+                          ? "Google conectado"
+                          : "Google não conectado"}
                       </p>
                     </div>
                   ))}
@@ -704,20 +866,20 @@ export default async function DashboardAdminPage() {
           <div className="mt-12 flex flex-col gap-3 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-xl font-extrabold text-[#08553F]">
-                Checklist antes do deploy
+                Próxima evolução administrativa
               </h2>
 
               <p className="mt-1 text-sm text-[#878787]">
-                Segurança, UX/Admin e compliance devem estar estáveis antes de
-                publicar em produção.
+                O próximo passo é criar páginas dedicadas para Consultas Admin e
+                Integrações Admin com filtros, paginação e ações operacionais.
               </p>
             </div>
 
             <Link
-              href="/dashboard/admin/logs"
+              href="/dashboard/admin/consultas"
               className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
             >
-              Revisar auditoria
+              Revisar consultas
             </Link>
           </div>
         </section>
