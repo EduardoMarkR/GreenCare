@@ -76,6 +76,7 @@ model Doctor {
   medicalRecords           MedicalRecord[]
   prescriptions            Prescription[]
   googleCalendarConnection GoogleCalendarConnection? @relation("DoctorGoogleCalendarConnection")
+  scheduleSettings         DoctorScheduleSettings?
 }
 
 model Availability {
@@ -185,6 +186,33 @@ model GoogleCalendarConnection {
   accessToken  String
   refreshToken String
   expiryDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DoctorScheduleSettings {
+  id       String @id @default(uuid())
+  doctorId String @unique
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  monday    Boolean @default(true)
+  tuesday   Boolean @default(true)
+  wednesday Boolean @default(true)
+  thursday  Boolean @default(true)
+  friday    Boolean @default(true)
+  saturday  Boolean @default(false)
+  sunday    Boolean @default(false)
+
+  workStartTime String @default("08:00")
+  workEndTime   String @default("18:00")
+
+  lunchStartTime String?
+  lunchEndTime   String?
+
+  slotDurationMinutes Int @default(60)
+  intervalMinutes     Int @default(0)
+  daysToSync          Int @default(30)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
