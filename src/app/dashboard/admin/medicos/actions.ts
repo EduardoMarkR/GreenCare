@@ -82,3 +82,68 @@ export async function updateDoctorApproval(formData: FormData) {
 
   redirect(`/dashboard/admin/medicos?success=${getSuccessParam(approvalStatus)}`);
 }
+
+export async function updateDoctorPlatformFee(formData: FormData) {
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+  const userRole = cookieStore.get("userRole")?.value;
+
+  if (!userId || userRole !== "ADMIN") {
+    redirect("/login");
+  }
+
+  const doctorId = String(formData.get("doctorId") ?? "");
+  const platformFeePercent = Number(formData.get("platformFeePercent") ?? 10);
+
+  if (!doctorId) {
+    throw new Error("Médico não informado.");
+  }
+
+  if (Number.isNaN(platformFeePercent)) {
+    throw new Error("Comissão inválida.");
+  }
+
+  const normalizedFee = Math.min(Math.max(platformFeePercent, 0), 100);
+
+  const doctorBeforeUpdate = await prisma.doctor.findUnique({
+    where: {
+      id: doctorId,
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (!doctorBeforeUpdate) {
+    throw new Error("Médico não encontrado.");
+  }
+
+  await prisma.doctor.update({
+    where: {
+      id: doctorId,
+    },
+    data: {
+      platformFeePercent: normalizedFee,
+    },
+  });
+
+  await createAuditLog({
+    userId,
+    action: "UPDATE_DOCTOR_PLATFORM_FEE",
+    entity: "Doctor",
+    entityId: doctorId,
+    details: `Admin alterou comissão da plataforma do médico ${
+      doctorBeforeUpdate.user.name
+    } (${doctorBeforeUpdate.user.email}) de ${Number(
+      doctorBeforeUpdate.platformFeePercent
+    )}% para ${normalizedFee}%.`,
+  });
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/medicos");
+  revalidatePath("/dashboard/admin/financeiro");
+  revalidatePath("/dashboard/medico/financeiro");
+
+  redirect("/dashboard/admin/medicos?success=comissao-atualizada");
+}

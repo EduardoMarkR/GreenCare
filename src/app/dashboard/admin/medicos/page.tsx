@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { prisma } from "@/lib/prisma";
-import { updateDoctorApproval } from "./actions";
+import { updateDoctorApproval, updateDoctorPlatformFee } from "./actions";
 import { deleteDoctor } from "./delete-actions";
 
 type AdminMedicosPageProps = {
@@ -111,6 +111,10 @@ function getSuccessMessage(success?: string) {
 
   if (success === "medico-excluido") {
     return "Médico excluído com sucesso.";
+  }
+
+  if (success === "comissao-atualizada") {
+    return "Comissão da plataforma atualizada com sucesso.";
   }
 
   return null;
@@ -244,7 +248,7 @@ export default async function AdminMedicosPage({
         <CannaPageHero
           badge="Administração"
           title="Gestão de médicos"
-          description="Aprove, reprove, busque e acompanhe os profissionais cadastrados na plataforma."
+          description="Aprove, reprove, busque, acompanhe e configure a comissão dos profissionais cadastrados na plataforma."
           backHref="/dashboard/admin"
           backLabel="Voltar ao painel"
         />
@@ -410,6 +414,22 @@ export default async function AdminMedicosPage({
                         </p>
 
                         <p>
+                          <strong className="text-[#08553F]">Comissão:</strong>{" "}
+                          {Number(doctor.platformFeePercent)}%
+                        </p>
+
+                        <p>
+                          <strong className="text-[#08553F]">
+                            Líquido médico:
+                          </strong>{" "}
+                          {formatCurrency(
+                            Number(doctor.price) -
+                              Number(doctor.price) *
+                                (Number(doctor.platformFeePercent) / 100)
+                          )}
+                        </p>
+
+                        <p>
                           <strong className="text-[#08553F]">
                             Telemedicina:
                           </strong>{" "}
@@ -425,6 +445,40 @@ export default async function AdminMedicosPage({
 
                     <div className="flex flex-col gap-3 lg:items-end">
                       {getStatusBadge(doctor.approvalStatus)}
+
+                      <form
+                        action={updateDoctorPlatformFee}
+                        className="w-full rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-4 lg:w-72"
+                      >
+                        <input
+                          type="hidden"
+                          name="doctorId"
+                          value={doctor.id}
+                        />
+
+                        <label className="text-xs font-bold uppercase tracking-wide text-[#878787]">
+                          Comissão da plataforma (%)
+                        </label>
+
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            type="number"
+                            name="platformFeePercent"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            defaultValue={Number(doctor.platformFeePercent)}
+                            className="min-h-11 w-full rounded-xl border border-[#C6C6C6]/70 bg-white px-3 text-sm font-bold text-[#08553F] outline-none focus:border-[#00CF7B]"
+                          />
+
+                          <SubmitButton
+                            loadingText="Salvando..."
+                            className="rounded-xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F] disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            Salvar
+                          </SubmitButton>
+                        </div>
+                      </form>
 
                       <div className="flex flex-wrap gap-2 lg:justify-end">
                         <Link

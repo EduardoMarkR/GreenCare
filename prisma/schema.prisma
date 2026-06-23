@@ -58,19 +58,20 @@ model Patient {
 }
 
 model Doctor {
-  id             String               @id @default(uuid())
-  userId         String               @unique
-  crm            String
-  crmUf          String
-  specialty      String
-  bio            String?
-  price          Decimal
-  telemedicine   Boolean              @default(true)
-  photoUrl       String?
-  approved       Boolean              @default(false)
-  approvalStatus DoctorApprovalStatus @default(PENDING)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id                  String               @id @default(uuid())
+  userId              String               @unique
+  crm                 String
+  crmUf               String
+  specialty           String
+  bio                 String?
+  price               Decimal
+  telemedicine        Boolean              @default(true)
+  photoUrl            String?
+  approved            Boolean              @default(false)
+  approvalStatus      DoctorApprovalStatus @default(PENDING)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  platformFeePercent  Decimal @default(10)
 
   user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   appointments             Appointment[]

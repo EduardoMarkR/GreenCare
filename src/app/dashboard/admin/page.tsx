@@ -215,6 +215,13 @@ export default async function DashboardAdminPage() {
       style: "bg-[#08553F] text-white",
     },
     {
+      title: "Financeiro",
+      description: "Receita, projeções e ranking médico.",
+      href: "/dashboard/admin/financeiro",
+      icon: "💰",
+      style: "bg-[#F3EFA1] text-[#08553F]",
+    },
+    {
       title: "Integrações",
       description: "Google Calendar e teleconsultas.",
       href: "/dashboard/admin/integracoes",
@@ -306,7 +313,7 @@ export default async function DashboardAdminPage() {
       title: "Receita prevista",
       value: formatCurrency(estimatedRevenue),
       helper: "Consultas confirmadas/concluídas",
-      href: "/dashboard/admin/consultas",
+      href: "/dashboard/admin/financeiro",
       icon: "💰",
       gradient: "from-emerald-400 to-emerald-700",
     },
@@ -314,7 +321,7 @@ export default async function DashboardAdminPage() {
       title: "Ticket médio",
       value: formatCurrency(averageTicket),
       helper: "Média por consulta paga",
-      href: "/dashboard/admin/consultas",
+      href: "/dashboard/admin/financeiro",
       icon: "💵",
       gradient: "from-lime-400 to-lime-700",
     },
@@ -870,16 +877,15 @@ export default async function DashboardAdminPage() {
               </h2>
 
               <p className="mt-1 text-sm text-[#878787]">
-                O próximo passo é criar páginas dedicadas para Consultas Admin e
-                Integrações Admin com filtros, paginação e ações operacionais.
+                O próximo passo é evoluir relatórios financeiros, filtros por período e exportação administrativa da plataforma.
               </p>
             </div>
 
             <Link
-              href="/dashboard/admin/consultas"
+              href="/dashboard/admin/financeiro"
               className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
             >
-              Revisar consultas
+              Revisar financeiro
             </Link>
           </div>
         </section>
