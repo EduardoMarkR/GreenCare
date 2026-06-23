@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
+import { toggleFavoriteDoctor } from "./actions";
 
 type Props = {
   params: Promise<{
@@ -34,6 +36,10 @@ function renderStars(rating: number) {
 export default async function DoctorPage({ params }: Props) {
   const { id } = await params;
 
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
+
   const doctor = await prisma.doctor.findUnique({
     where: {
       id,
@@ -58,6 +64,32 @@ export default async function DoctorPage({ params }: Props) {
 
   if (!doctor || doctor.approvalStatus !== "APPROVED") {
     notFound();
+  }
+
+  let isFavorite = false;
+
+  if (userId && activeProfile === "PATIENT") {
+    const patient = await prisma.patient.findUnique({
+      where: {
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (patient) {
+      const favorite = await prisma.favoriteDoctor.findUnique({
+        where: {
+          patientId_doctorId: {
+            patientId: patient.id,
+            doctorId: doctor.id,
+          },
+        },
+      });
+
+      isFavorite = Boolean(favorite);
+    }
   }
 
   const totalReviews = doctor.reviews.length;
@@ -135,10 +167,27 @@ export default async function DoctorPage({ params }: Props) {
                     ⚕️
                   </div>
 
-                  <div>
-                    <span className="inline-flex rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F]">
-                      Médico aprovado
-                    </span>
+                  <div className="flex-1">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="inline-flex w-fit rounded-full bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F]">
+                        Médico aprovado
+                      </span>
+
+                      <form action={toggleFavoriteDoctor}>
+                        <input type="hidden" name="doctorId" value={doctor.id} />
+
+                        <button
+                          type="submit"
+                          className={
+                            isFavorite
+                              ? "rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200"
+                              : "rounded-full bg-[#F7F4E7] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                          }
+                        >
+                          {isFavorite ? "♥ Favorito" : "♡ Favoritar"}
+                        </button>
+                      </form>
+                    </div>
 
                     <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-[#08553F] md:text-5xl">
                       {doctor.user.name}

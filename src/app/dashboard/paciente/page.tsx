@@ -390,6 +390,27 @@ export default async function DashboardPacientePage({
             </Link>
 
             <Link
+              href="/dashboard/paciente/favoritos"
+              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FDECEC] text-2xl">
+                ❤️
+              </div>
+
+              <h2 className="text-lg font-extrabold text-[#08553F]">
+                Médicos favoritos
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#878787]">
+                Acesse rapidamente os profissionais que você salvou para futuras consultas.
+              </p>
+
+              <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                Ver favoritos →
+              </p>
+            </Link>
+
+            <Link
               href="/dashboard/paciente/receitas"
               className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >

@@ -48,12 +48,13 @@ model Patient {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  appointments   Appointment[]
-  documents      Document[]
-  medicalRecords MedicalRecord[]
-  prescriptions  Prescription[]
-  reviews        DoctorReview[]
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  documents       Document[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  reviews         DoctorReview[]
+  favoriteDoctors FavoriteDoctor[]
 }
 
 model Doctor {
@@ -77,6 +78,7 @@ model Doctor {
   medicalRecords           MedicalRecord[]
   prescriptions            Prescription[]
   reviews                  DoctorReview[]
+  favoritedBy              FavoriteDoctor[]
   googleCalendarConnection GoogleCalendarConnection? @relation("DoctorGoogleCalendarConnection")
   scheduleSettings         DoctorScheduleSettings?
 }
@@ -237,4 +239,16 @@ model DoctorReview {
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   doctor      Doctor      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model FavoriteDoctor {
+  id        String   @id @default(uuid())
+  patientId String
+  doctorId  String
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, doctorId])
 }
