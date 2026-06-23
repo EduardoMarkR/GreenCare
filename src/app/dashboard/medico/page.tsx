@@ -12,6 +12,17 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+function formatTimeFromAvailability(
+  availability?: {
+    startTime: string;
+    endTime: string;
+  } | null
+) {
+  if (!availability) return "Horário não informado";
+
+  return `${availability.startTime} às ${availability.endTime}`;
+}
+
 function getStatusLabel(status: string) {
   if (status === "PENDING") return "Pendente";
   if (status === "CONFIRMED") return "Confirmada";
@@ -30,13 +41,38 @@ function getStatusClass(status: string) {
   return "bg-gray-100 text-gray-800";
 }
 
+function getStartOfTodayUtc() {
+  const now = new Date();
+
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+}
+
+function getStartOfTomorrowUtc() {
+  const today = getStartOfTodayUtc();
+
+  return new Date(today.getTime() + 24 * 60 * 60 * 1000);
+}
+
+function getStartOfAfterTomorrowUtc() {
+  const tomorrow = getStartOfTomorrowUtc();
+
+  return new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
+}
+
 export default async function DashboardMedicoPage() {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId) {
     redirect("/login");
+  }
+
+  if (activeProfile !== "DOCTOR") {
+    redirect("/");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -52,13 +88,11 @@ export default async function DashboardMedicoPage() {
     redirect("/login");
   }
 
-  const totalHorarios = await prisma.availability.count({
-    where: {
-      doctorId: doctor.id,
-    },
-  });
+  const todayStart = getStartOfTodayUtc();
+  const tomorrowStart = getStartOfTomorrowUtc();
+  const afterTomorrowStart = getStartOfAfterTomorrowUtc();
 
-  const totalConsultas = await prisma.appointment.count({
+  const totalHorarios = await prisma.availability.count({
     where: {
       doctorId: doctor.id,
     },
@@ -71,23 +105,101 @@ export default async function DashboardMedicoPage() {
     },
   });
 
-  const proximasConsultas = await prisma.appointment.findMany({
+  const consultasHoje = await prisma.appointment.count({
     where: {
       doctorId: doctor.id,
       status: {
-        not: "CANCELLED",
+        in: ["PENDING", "CONFIRMED"],
+      },
+      date: {
+        gte: todayStart,
+        lt: tomorrowStart,
+      },
+    },
+  });
+
+  const consultasAmanha = await prisma.appointment.count({
+    where: {
+      doctorId: doctor.id,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
+      date: {
+        gte: tomorrowStart,
+        lt: afterTomorrowStart,
+      },
+    },
+  });
+
+  const pacientesAtendidos = await prisma.appointment.findMany({
+    where: {
+      doctorId: doctor.id,
+      status: "COMPLETED",
+    },
+    distinct: ["patientId"],
+    select: {
+      patientId: true,
+    },
+  });
+
+  const proximaConsulta = await prisma.appointment.findFirst({
+    where: {
+      doctorId: doctor.id,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
+      date: {
+        gte: todayStart,
       },
     },
     include: {
+      availability: true,
       patient: {
         include: {
           user: true,
         },
       },
     },
-    orderBy: {
-      date: "asc",
+    orderBy: [
+      {
+        date: "asc",
+      },
+      {
+        availability: {
+          startTime: "asc",
+        },
+      },
+    ],
+  });
+
+  const proximasConsultas = await prisma.appointment.findMany({
+    where: {
+      doctorId: doctor.id,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
+      date: {
+        gte: todayStart,
+      },
     },
+    include: {
+      availability: true,
+      patient: {
+        include: {
+          user: true,
+        },
+      },
+    },
+    orderBy: [
+      {
+        date: "asc",
+      },
+      {
+        availability: {
+          startTime: "asc",
+        },
+      },
+    ],
     take: 5,
   });
 
@@ -99,7 +211,7 @@ export default async function DashboardMedicoPage() {
         <CannaPageHero
           badge="Área médica"
           title={`Olá, ${doctor.user.name}`}
-          description="Gerencie sua agenda, disponibilidade, consultas e resumo financeiro em uma experiência profissional e organizada."
+          description="Acompanhe seus atendimentos, próximos compromissos, agenda e indicadores essenciais da sua rotina médica."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -147,7 +259,121 @@ export default async function DashboardMedicoPage() {
             </Link>
           </div>
 
-          <div className="grid items-stretch gap-6 md:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
+            <div className="overflow-hidden rounded-[2rem] bg-[#08553F] shadow-sm">
+              <div className="h-2 bg-gradient-to-r from-[#00CF7B] to-[#F3EFA1]" />
+
+              <div className="p-7">
+                <p className="text-sm font-bold uppercase tracking-wide text-white/60">
+                  Próxima consulta
+                </p>
+
+                {proximaConsulta ? (
+                  <div className="mt-5">
+                    <h2 className="text-3xl font-extrabold text-white">
+                      {proximaConsulta.patient.user.name}
+                    </h2>
+
+                    <p className="mt-2 text-white/70">
+                      {formatDate(proximaConsulta.date)} •{" "}
+                      {formatTimeFromAvailability(proximaConsulta.availability)}
+                    </p>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <span
+                        className={`rounded-full px-4 py-2 text-sm font-bold ${getStatusClass(
+                          proximaConsulta.status
+                        )}`}
+                      >
+                        {getStatusLabel(proximaConsulta.status)}
+                      </span>
+
+                      {proximaConsulta.meetingUrl ? (
+                        <a
+                          href={proximaConsulta.meetingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-full bg-white px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                        >
+                          Abrir Google Meet
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-6">
+                      <Link
+                        href="/medico/consultas"
+                        className="inline-flex rounded-2xl bg-[#00CF7B] px-5 py-3 font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                      >
+                        Gerenciar consulta
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5">
+                    <h2 className="text-3xl font-extrabold text-white">
+                      Nenhuma consulta futura.
+                    </h2>
+
+                    <p className="mt-2 text-white/70">
+                      Quando houver novos agendamentos, a próxima consulta
+                      aparecerá aqui.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+              <p className="text-sm font-bold uppercase tracking-wide text-[#878787]">
+                Resumo da rotina
+              </p>
+
+              <div className="mt-5 grid grid-cols-2 gap-4">
+                <div className="rounded-2xl bg-[#F7F4E7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#878787]">
+                    Hoje
+                  </p>
+
+                  <p className="mt-2 text-3xl font-extrabold text-[#08553F]">
+                    {consultasHoje}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[#F7F4E7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#878787]">
+                    Amanhã
+                  </p>
+
+                  <p className="mt-2 text-3xl font-extrabold text-[#08553F]">
+                    {consultasAmanha}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[#F7F4E7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#878787]">
+                    Pendentes
+                  </p>
+
+                  <p className="mt-2 text-3xl font-extrabold text-[#08553F]">
+                    {consultasPendentes}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-[#F7F4E7] p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#878787]">
+                    Pacientes
+                  </p>
+
+                  <p className="mt-2 text-3xl font-extrabold text-[#08553F]">
+                    {pacientesAtendidos.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid items-stretch gap-6 md:grid-cols-3">
             <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
               <div>
                 <p className="text-sm font-semibold text-[#878787]">
@@ -164,26 +390,13 @@ export default async function DashboardMedicoPage() {
               </p>
             </div>
 
-            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
+            <Link
+              href="/medico/consultas?status=PENDING"
+              className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
               <div>
                 <p className="text-sm font-semibold text-[#878787]">
-                  Consultas totais
-                </p>
-
-                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                  {totalConsultas}
-                </p>
-              </div>
-
-              <p className="mt-3 text-sm text-[#878787]">
-                Consultas vinculadas ao seu perfil.
-              </p>
-            </div>
-
-            <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm">
-              <div>
-                <p className="text-sm font-semibold text-[#878787]">
-                  Pendentes
+                  Aguardando confirmação
                 </p>
 
                 <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
@@ -191,10 +404,29 @@ export default async function DashboardMedicoPage() {
                 </p>
               </div>
 
-              <p className="mt-3 text-sm text-[#878787]">
-                Consultas aguardando confirmação.
+              <p className="mt-3 text-sm font-bold text-[#08553F]">
+                Ver pendentes →
               </p>
-            </div>
+            </Link>
+
+            <Link
+              href="/medico/consultas"
+              className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div>
+                <p className="text-sm font-semibold text-[#878787]">
+                  Atendimentos futuros
+                </p>
+
+                <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                  {proximasConsultas.length}
+                </p>
+              </div>
+
+              <p className="mt-3 text-sm font-bold text-[#08553F]">
+                Ver agenda médica →
+              </p>
+            </Link>
           </div>
 
           <div className="mt-10 grid items-stretch gap-6 lg:grid-cols-4">
@@ -307,7 +539,7 @@ export default async function DashboardMedicoPage() {
                 </h2>
 
                 <p className="mt-2 text-[#878787]">
-                  Veja os próximos atendimentos vinculados ao seu perfil médico.
+                  Lista resumida dos próximos atendimentos ativos.
                 </p>
               </div>
 
@@ -323,7 +555,7 @@ export default async function DashboardMedicoPage() {
               {proximasConsultas.length === 0 && (
                 <div className="rounded-2xl bg-[#F7F4E7] p-5">
                   <p className="font-bold text-[#08553F]">
-                    Nenhuma consulta encontrada.
+                    Nenhuma consulta futura encontrada.
                   </p>
 
                   <p className="mt-2 text-sm text-[#878787]">
@@ -344,7 +576,8 @@ export default async function DashboardMedicoPage() {
                       </p>
 
                       <p className="mt-2 text-sm font-semibold text-[#08553F]">
-                        {formatDate(appointment.date)}
+                        {formatDate(appointment.date)} •{" "}
+                        {formatTimeFromAvailability(appointment.availability)}
                       </p>
                     </div>
 
