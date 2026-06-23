@@ -27,6 +27,10 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function renderStars(rating: number) {
+  return "★".repeat(rating) + "☆".repeat(5 - rating);
+}
+
 export default async function DoctorPage({ params }: Props) {
   const { id } = await params;
 
@@ -36,12 +40,33 @@ export default async function DoctorPage({ params }: Props) {
     },
     include: {
       user: true,
+      reviews: {
+        include: {
+          patient: {
+            include: {
+              user: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 6,
+      },
     },
   });
 
-  if (!doctor) {
+  if (!doctor || doctor.approvalStatus !== "APPROVED") {
     notFound();
   }
+
+  const totalReviews = doctor.reviews.length;
+
+  const averageRating =
+    totalReviews > 0
+      ? doctor.reviews.reduce((total, review) => total + review.rating, 0) /
+        totalReviews
+      : 0;
 
   const activeAppointments = await prisma.appointment.findMany({
     where: {
@@ -60,7 +85,9 @@ export default async function DoctorPage({ params }: Props) {
 
   const unavailableAvailabilityIds = activeAppointments
     .map((appointment) => appointment.availabilityId)
-    .filter((availabilityId): availabilityId is string => Boolean(availabilityId));
+    .filter((availabilityId): availabilityId is string =>
+      Boolean(availabilityId)
+    );
 
   const now = new Date();
 
@@ -92,7 +119,7 @@ export default async function DoctorPage({ params }: Props) {
         <CannaPageHero
           badge="Médico aprovado"
           title={doctor.user.name}
-          description={`Especialista em ${doctor.specialty}. Veja os dados do profissional e escolha um horário disponível para agendar sua consulta.`}
+          description={`Especialista em ${doctor.specialty}. Veja os dados do profissional, avaliações de pacientes e escolha um horário disponível para agendar sua consulta.`}
           backHref="/medicos"
           backLabel="Voltar para médicos"
         />
@@ -124,6 +151,25 @@ export default async function DoctorPage({ params }: Props) {
                     <p className="mt-3 text-[#878787]">
                       CRM {doctor.crm}/{doctor.crmUf}
                     </p>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      {totalReviews > 0 ? (
+                        <>
+                          <span className="rounded-full bg-[#F7F4E7] px-4 py-2 text-sm font-extrabold text-[#08553F]">
+                            ⭐ {averageRating.toFixed(1)}
+                          </span>
+
+                          <span className="text-sm font-semibold text-[#878787]">
+                            {totalReviews} avaliação
+                            {totalReviews === 1 ? "" : "es"}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="rounded-full bg-[#F7F4E7] px-4 py-2 text-sm font-bold text-[#878787]">
+                          Ainda sem avaliações
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -168,6 +214,73 @@ export default async function DoctorPage({ params }: Props) {
                     {doctor.bio ?? "Biografia não informada."}
                   </p>
                 </div>
+
+                <div className="mt-10 border-t border-[#C6C6C6]/50 pt-8">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h2 className="text-2xl font-extrabold text-[#08553F]">
+                        Avaliações de pacientes
+                      </h2>
+
+                      <p className="mt-2 text-[#878787]">
+                        Comentários enviados após consultas concluídas.
+                      </p>
+                    </div>
+
+                    {totalReviews > 0 ? (
+                      <div className="rounded-3xl bg-[#F7F4E7] px-5 py-4 text-right">
+                        <p className="text-3xl font-extrabold text-[#08553F]">
+                          {averageRating.toFixed(1)}
+                        </p>
+
+                        <p className="text-sm font-bold text-[#F5B301]">
+                          {renderStars(Math.round(averageRating))}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    {doctor.reviews.length === 0 ? (
+                      <div className="rounded-3xl bg-[#F7F4E7] p-5">
+                        <p className="font-bold text-[#08553F]">
+                          Este médico ainda não possui avaliações públicas.
+                        </p>
+
+                        <p className="mt-2 text-sm text-[#878787]">
+                          As avaliações aparecerão aqui após consultas
+                          concluídas.
+                        </p>
+                      </div>
+                    ) : (
+                      doctor.reviews.map((review) => (
+                        <div
+                          key={review.id}
+                          className="rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
+                        >
+                          <p className="font-bold text-[#F5B301]">
+                            {renderStars(review.rating)}
+                          </p>
+
+                          {review.comment ? (
+                            <p className="mt-3 leading-7 text-[#08553F]">
+                              “{review.comment}”
+                            </p>
+                          ) : (
+                            <p className="mt-3 text-sm text-[#878787]">
+                              Avaliação enviada sem comentário.
+                            </p>
+                          )}
+
+                          <p className="mt-4 text-sm font-semibold text-[#878787]">
+                            {review.patient.user.name} •{" "}
+                            {formatDate(review.createdAt)}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -209,6 +322,23 @@ export default async function DoctorPage({ params }: Props) {
                     {availabilities.length}
                   </p>
                 </div>
+
+                {totalReviews > 0 ? (
+                  <div className="mt-6 rounded-3xl bg-white/10 p-5">
+                    <p className="text-sm font-semibold text-white/70">
+                      Avaliação média
+                    </p>
+
+                    <p className="mt-1 text-2xl font-extrabold">
+                      ⭐ {averageRating.toFixed(1)}
+                    </p>
+
+                    <p className="mt-1 text-sm text-white/70">
+                      {totalReviews} avaliação
+                      {totalReviews === 1 ? "" : "es"}
+                    </p>
+                  </div>
+                ) : null}
 
                 <Link
                   href="#agenda"
