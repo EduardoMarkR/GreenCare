@@ -292,6 +292,14 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             >
               Ver médicos
             </Link>
+
+            <Link
+            href="/dashboard/admin/financeiro/exportar"
+            className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
+            >
+            Exportar CSV
+            </Link>
+
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">

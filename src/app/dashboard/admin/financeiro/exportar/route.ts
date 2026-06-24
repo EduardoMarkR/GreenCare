@@ -15,6 +15,12 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatNullableDate(date?: Date | null) {
+  if (!date) return "";
+
+  return formatDate(date);
+}
+
 function escapeCsv(value: string | number) {
   const stringValue = String(value).replace(/"/g, '""');
 
@@ -28,10 +34,7 @@ export async function GET() {
   const activeProfile = cookieStore.get("activeProfile")?.value;
 
   if (!userId || activeProfile !== "ADMIN") {
-    return NextResponse.json(
-      { error: "Não autorizado." },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
   const now = new Date();
@@ -44,14 +47,15 @@ export async function GET() {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
   );
 
-  const appointments = await prisma.appointment.findMany({
+  const payments = await prisma.payment.findMany({
     where: {
-      date: {
+      createdAt: {
         gte: startOfMonth,
         lt: startOfNextMonth,
       },
     },
     include: {
+      appointment: true,
       doctor: {
         include: {
           user: true,
@@ -64,34 +68,43 @@ export async function GET() {
       },
     },
     orderBy: {
-      date: "desc",
+      createdAt: "desc",
     },
   });
 
   const header = [
-    "Data",
+    "Data do pagamento",
+    "Data da consulta",
     "Médico",
     "Especialidade",
     "Paciente",
-    "Status",
-    "Valor estimado",
+    "Status pagamento",
+    "Status consulta",
+    "Método",
+    "Valor bruto",
+    "Comissão %",
+    "Comissão plataforma",
+    "Valor médico",
+    "Pago em",
+    "Cancelado em",
   ];
 
-  const rows = appointments.map((appointment) => {
-    const value =
-      appointment.status === "CANCELLED"
-        ? 0
-        : Number(appointment.doctor.price);
-
-    return [
-      formatDate(appointment.date),
-      appointment.doctor.user.name,
-      appointment.doctor.specialty,
-      appointment.patient.user.name,
-      appointment.status,
-      formatCurrency(value),
-    ];
-  });
+  const rows = payments.map((payment) => [
+    formatDate(payment.createdAt),
+    formatDate(payment.appointment.date),
+    payment.doctor.user.name,
+    payment.doctor.specialty,
+    payment.patient.user.name,
+    payment.status,
+    payment.appointment.status,
+    payment.method ?? "",
+    formatCurrency(Number(payment.amount)),
+    Number(payment.commissionRate),
+    formatCurrency(Number(payment.platformFee)),
+    formatCurrency(Number(payment.doctorAmount)),
+    formatNullableDate(payment.paidAt),
+    formatNullableDate(payment.cancelledAt),
+  ]);
 
   const csv = [header, ...rows]
     .map((row) => row.map(escapeCsv).join(";"))
