@@ -38,8 +38,13 @@ enum PaymentMethod {
   PIX
   CREDIT_CARD
   DEBIT_CARD
+  BOLETO
   BANK_TRANSFER
   MANUAL
+}
+
+enum PaymentGateway {
+  ASAAS
 }
 
 model User {
@@ -61,6 +66,7 @@ model Patient {
   userId    String    @unique
   birthDate DateTime?
   phone     String?
+  paymentCustomerId String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -160,6 +166,15 @@ model Payment {
   status PaymentStatus  @default(PENDING)
   method PaymentMethod?
 
+  gateway           PaymentGateway?
+  gatewayPaymentId  String?
+  gatewayCustomerId String?
+  invoiceUrl        String?
+  pixQrCode         String?
+  pixCopyPaste      String?
+  boletoUrl         String?
+  webhookPayload    Json?
+
   paidAt      DateTime?
   refundedAt  DateTime?
   cancelledAt DateTime?
@@ -174,6 +189,9 @@ model Payment {
   @@index([patientId])
   @@index([status])
   @@index([createdAt])
+  @@index([gateway])
+  @@index([gatewayPaymentId])
+  @@index([gatewayCustomerId])
 }
 
 model Document {
