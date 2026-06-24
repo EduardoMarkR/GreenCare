@@ -71,29 +71,73 @@ export default async function FinanceiroAdminPage() {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
   );
 
-  const appointmentsThisMonth = await prisma.appointment.findMany({
-    where: {
-      date: {
-        gte: startOfMonth,
-        lt: startOfNextMonth,
-      },
-    },
-    include: {
-      doctor: {
+  const [appointmentsThisMonth, allCompletedAppointments, approvedDoctors, payouts] =
+    await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          date: {
+            gte: startOfMonth,
+            lt: startOfNextMonth,
+          },
+        },
+        include: {
+          doctor: {
+            include: {
+              user: true,
+            },
+          },
+          patient: {
+            include: {
+              user: true,
+            },
+          },
+        },
+        orderBy: {
+          date: "desc",
+        },
+      }),
+      prisma.appointment.findMany({
+        where: {
+          status: "COMPLETED",
+        },
+        include: {
+          doctor: true,
+        },
+      }),
+      prisma.doctor.findMany({
+        where: {
+          approvalStatus: "APPROVED",
+        },
         include: {
           user: true,
+          appointments: {
+            where: {
+              status: "COMPLETED",
+              date: {
+                gte: startOfMonth,
+                lt: startOfNextMonth,
+              },
+            },
+          },
         },
-      },
-      patient: {
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+      prisma.doctorPayout.findMany({
         include: {
-          user: true,
+          doctor: {
+            include: {
+              user: true,
+            },
+          },
         },
-      },
-    },
-    orderBy: {
-      date: "desc",
-    },
-  });
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 6,
+      }),
+    ]);
 
   const completedAppointmentsThisMonth = appointmentsThisMonth.filter(
     (appointment) => appointment.status === "COMPLETED"
@@ -110,9 +154,10 @@ export default async function FinanceiroAdminPage() {
 
   const completedFinancials = completedAppointmentsThisMonth.reduce(
     (totals, appointment) => {
-      const price = Number(appointment.doctor.price);
-      const feePercent = Number(appointment.doctor.platformFeePercent);
-      const values = calculateFinancialValues(price, feePercent);
+      const values = calculateFinancialValues(
+        Number(appointment.doctor.price),
+        Number(appointment.doctor.platformFeePercent)
+      );
 
       return {
         gross: totals.gross + values.gross,
@@ -120,18 +165,15 @@ export default async function FinanceiroAdminPage() {
         doctorNet: totals.doctorNet + values.doctorNet,
       };
     },
-    {
-      gross: 0,
-      platformFee: 0,
-      doctorNet: 0,
-    }
+    { gross: 0, platformFee: 0, doctorNet: 0 }
   );
 
   const receivableFinancials = receivableAppointmentsThisMonth.reduce(
     (totals, appointment) => {
-      const price = Number(appointment.doctor.price);
-      const feePercent = Number(appointment.doctor.platformFeePercent);
-      const values = calculateFinancialValues(price, feePercent);
+      const values = calculateFinancialValues(
+        Number(appointment.doctor.price),
+        Number(appointment.doctor.platformFeePercent)
+      );
 
       return {
         gross: totals.gross + values.gross,
@@ -139,11 +181,7 @@ export default async function FinanceiroAdminPage() {
         doctorNet: totals.doctorNet + values.doctorNet,
       };
     },
-    {
-      gross: 0,
-      platformFee: 0,
-      doctorNet: 0,
-    }
+    { gross: 0, platformFee: 0, doctorNet: 0 }
   );
 
   const projectedFinancials = {
@@ -153,20 +191,12 @@ export default async function FinanceiroAdminPage() {
     doctorNet: completedFinancials.doctorNet + receivableFinancials.doctorNet,
   };
 
-  const allCompletedAppointments = await prisma.appointment.findMany({
-    where: {
-      status: "COMPLETED",
-    },
-    include: {
-      doctor: true,
-    },
-  });
-
   const lifetimeFinancials = allCompletedAppointments.reduce(
     (totals, appointment) => {
-      const price = Number(appointment.doctor.price);
-      const feePercent = Number(appointment.doctor.platformFeePercent);
-      const values = calculateFinancialValues(price, feePercent);
+      const values = calculateFinancialValues(
+        Number(appointment.doctor.price),
+        Number(appointment.doctor.platformFeePercent)
+      );
 
       return {
         gross: totals.gross + values.gross,
@@ -174,33 +204,20 @@ export default async function FinanceiroAdminPage() {
         doctorNet: totals.doctorNet + values.doctorNet,
       };
     },
-    {
-      gross: 0,
-      platformFee: 0,
-      doctorNet: 0,
-    }
+    { gross: 0, platformFee: 0, doctorNet: 0 }
   );
 
-  const approvedDoctors = await prisma.doctor.findMany({
-    where: {
-      approvalStatus: "APPROVED",
-    },
-    include: {
-      user: true,
-      appointments: {
-        where: {
-          status: "COMPLETED",
-          date: {
-            gte: startOfMonth,
-            lt: startOfNextMonth,
-          },
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  const allPayouts = await prisma.doctorPayout.findMany();
+
+  const totalPaidToDoctors = allPayouts.reduce(
+    (sum, payout) => sum + Number(payout.amount),
+    0
+  );
+
+  const pendingDoctorPayout = Math.max(
+    lifetimeFinancials.doctorNet - totalPaidToDoctors,
+    0
+  );
 
   const doctorsFinancialRanking = approvedDoctors
     .map((doctor) => {
@@ -235,7 +252,7 @@ export default async function FinanceiroAdminPage() {
         <CannaPageHero
           badge="Financeiro admin"
           title="Dashboard financeiro da plataforma"
-          description="Acompanhe receita bruta, comissão da plataforma, repasse médico, projeções mensais e desempenho financeiro dos profissionais."
+          description="Acompanhe receita bruta, comissão da plataforma, repasses médicos, saldo pendente e desempenho financeiro dos profissionais."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -245,6 +262,13 @@ export default async function FinanceiroAdminPage() {
               className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
             >
               Voltar ao painel admin
+            </Link>
+
+            <Link
+              href="/dashboard/admin/repasses"
+              className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Gerenciar repasses
             </Link>
 
             <Link
@@ -300,18 +324,34 @@ export default async function FinanceiroAdminPage() {
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Repasse médico realizado
+                Repasses realizados
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(completedFinancials.doctorNet)}
+                {formatCurrency(totalPaidToDoctors)}
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                Valor líquido estimado aos médicos
+                Total já pago aos médicos
               </p>
             </div>
 
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Saldo pendente de repasse
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {formatCurrency(pendingDoctorPayout)}
+              </p>
+
+              <p className="mt-2 text-sm text-[#878787]">
+                Líquido médico histórico - repasses
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
                 Projeção bruta do mês
@@ -320,14 +360,8 @@ export default async function FinanceiroAdminPage() {
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
                 {formatCurrency(projectedFinancials.gross)}
               </p>
-
-              <p className="mt-2 text-sm text-[#878787]">
-                Realizado + pendente/confirmado
-              </p>
             </div>
-          </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
                 Comissão projetada do mês
@@ -345,16 +379,6 @@ export default async function FinanceiroAdminPage() {
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
                 {formatCurrency(projectedFinancials.doctorNet)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Comissão histórica da plataforma
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(lifetimeFinancials.platformFee)}
               </p>
             </div>
           </div>
@@ -392,60 +416,117 @@ export default async function FinanceiroAdminPage() {
           </div>
 
           <div className="mt-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-[#08553F]">
-                Ranking financeiro médico
-              </h2>
+            <div className="space-y-6">
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+                <h2 className="text-2xl font-extrabold text-[#08553F]">
+                  Ranking financeiro médico
+                </h2>
 
-              <p className="mt-2 text-[#878787]">
-                Top médicos por receita bruta concluída neste mês.
-              </p>
+                <p className="mt-2 text-[#878787]">
+                  Top médicos por receita bruta concluída neste mês.
+                </p>
 
-              <div className="mt-6 space-y-4">
-                {doctorsFinancialRanking.length === 0 ? (
-                  <div className="rounded-2xl bg-[#F7F4E7] p-5">
-                    <p className="font-bold text-[#08553F]">
-                      Nenhum médico com faturamento neste mês.
-                    </p>
-                  </div>
-                ) : (
-                  doctorsFinancialRanking.map((doctor, index) => (
-                    <div
-                      key={doctor.id}
-                      className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-black text-[#00CF7B]">
-                            #{index + 1}
-                          </p>
+                <div className="mt-6 space-y-4">
+                  {doctorsFinancialRanking.length === 0 ? (
+                    <div className="rounded-2xl bg-[#F7F4E7] p-5">
+                      <p className="font-bold text-[#08553F]">
+                        Nenhum médico com faturamento neste mês.
+                      </p>
+                    </div>
+                  ) : (
+                    doctorsFinancialRanking.map((doctor, index) => (
+                      <div
+                        key={doctor.id}
+                        className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-black text-[#00CF7B]">
+                              #{index + 1}
+                            </p>
 
-                          <p className="mt-1 font-extrabold text-[#08553F]">
-                            {doctor.name}
-                          </p>
+                            <p className="mt-1 font-extrabold text-[#08553F]">
+                              {doctor.name}
+                            </p>
 
-                          <p className="mt-1 text-sm text-[#878787]">
-                            {doctor.specialty}
-                          </p>
+                            <p className="mt-1 text-sm text-[#878787]">
+                              {doctor.specialty}
+                            </p>
 
-                          <p className="mt-2 text-xs font-bold text-[#08553F]">
-                            {doctor.completedCount} consulta(s) • Comissão{" "}
-                            {doctor.feePercent}%
-                          </p>
+                            <p className="mt-2 text-xs font-bold text-[#08553F]">
+                              {doctor.completedCount} consulta(s) • Comissão{" "}
+                              {doctor.feePercent}%
+                            </p>
 
-                          <p className="mt-2 text-xs text-[#878787]">
-                            Plataforma: {formatCurrency(doctor.platformFee)} •
-                            Médico: {formatCurrency(doctor.doctorNet)}
+                            <p className="mt-2 text-xs text-[#878787]">
+                              Plataforma: {formatCurrency(doctor.platformFee)} •
+                              Médico: {formatCurrency(doctor.doctorNet)}
+                            </p>
+                          </div>
+
+                          <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
+                            {formatCurrency(doctor.gross)}
                           </p>
                         </div>
-
-                        <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
-                          {formatCurrency(doctor.gross)}
-                        </p>
                       </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-[#08553F]">
+                      Repasses recentes
+                    </h2>
+
+                    <p className="mt-2 text-[#878787]">
+                      Últimos repasses registrados aos médicos.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/dashboard/admin/repasses"
+                    className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                  >
+                    Ver repasses
+                  </Link>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  {payouts.length === 0 ? (
+                    <div className="rounded-2xl bg-[#F7F4E7] p-5">
+                      <p className="font-bold text-[#08553F]">
+                        Nenhum repasse registrado ainda.
+                      </p>
                     </div>
-                  ))
-                )}
+                  ) : (
+                    payouts.map((payout) => (
+                      <div
+                        key={payout.id}
+                        className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="font-extrabold text-[#08553F]">
+                              Dr(a). {payout.doctor.user.name}
+                            </p>
+
+                            <p className="mt-1 text-sm text-[#878787]">
+                              {formatDate(payout.startDate)} até{" "}
+                              {formatDate(payout.endDate)}
+                            </p>
+                          </div>
+
+                          <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
+                            {formatCurrency(Number(payout.amount))}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 

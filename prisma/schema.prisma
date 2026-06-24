@@ -80,6 +80,7 @@ model Doctor {
   prescriptions            Prescription[]
   reviews                  DoctorReview[]
   favoritedBy              FavoriteDoctor[]
+  payouts                  DoctorPayout[]
   googleCalendarConnection GoogleCalendarConnection? @relation("DoctorGoogleCalendarConnection")
   scheduleSettings         DoctorScheduleSettings?
 }
@@ -252,4 +253,21 @@ model FavoriteDoctor {
   doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
   @@unique([patientId, doctorId])
+}
+
+model DoctorPayout {
+  id        String   @id @default(cuid())
+
+  doctorId  String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  amount    Decimal  @db.Decimal(10, 2)
+
+  startDate DateTime
+  endDate   DateTime
+
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

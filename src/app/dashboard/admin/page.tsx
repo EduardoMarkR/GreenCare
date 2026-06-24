@@ -77,6 +77,8 @@ export default async function DashboardAdminPage() {
     recentDoctors,
     recentDocuments,
     recentLogs,
+    totalPayouts,
+    totalPayoutAmount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.doctor.count(),
@@ -181,7 +183,13 @@ export default async function DashboardAdminPage() {
       },
       take: 5,
     }),
+    prisma.doctorPayout.count(),
+    prisma.doctorPayout.findMany(),
   ]);
+
+  const totalPayoutAmountValue = totalPayoutAmount.reduce((total, payout) => {
+    return total + Number(payout.amount);
+  }, 0);
 
   const estimatedRevenue = revenueAppointments.reduce((total, appointment) => {
     return total + Number(appointment.doctor.price);
@@ -220,6 +228,13 @@ export default async function DashboardAdminPage() {
       href: "/dashboard/admin/financeiro",
       icon: "💰",
       style: "bg-[#F3EFA1] text-[#08553F]",
+    },
+    {
+      title: "Repasses",
+      description: "Registrar e acompanhar pagamentos médicos.",
+      href: "/dashboard/admin/repasses",
+      icon: "🏦",
+      style: "bg-white text-[#08553F]",
     },
     {
       title: "Integrações",
@@ -324,6 +339,14 @@ export default async function DashboardAdminPage() {
       href: "/dashboard/admin/financeiro",
       icon: "💵",
       gradient: "from-lime-400 to-lime-700",
+    },
+    {
+      title: "Repasses",
+      value: formatCurrency(totalPayoutAmountValue),
+      helper: `${totalPayouts} repasse(s) registrado(s)`,
+      href: "/dashboard/admin/repasses",
+      icon: "🏦",
+      gradient: "from-teal-400 to-teal-700",
     },
     {
       title: "Prontuários",

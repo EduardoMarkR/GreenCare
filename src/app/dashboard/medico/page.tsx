@@ -259,6 +259,13 @@ export default async function DashboardMedicoPage() {
             </Link>
 
             <Link
+              href="/dashboard/medico/repasses"
+              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
+            >
+              Repasses
+            </Link>
+
+            <Link
               href="/logout"
               className="rounded-2xl bg-red-600 px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-red-700"
             >
@@ -436,7 +443,7 @@ export default async function DashboardMedicoPage() {
             </Link>
           </div>
 
-          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Link
               href="/dashboard/medico/perfil"
               className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
@@ -558,6 +565,31 @@ export default async function DashboardMedicoPage() {
 
                 <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
                   Abrir extrato →
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              href="/dashboard/medico/repasses"
+              className="group block h-full overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="h-2 bg-gradient-to-r from-[#08553F] to-[#F3EFA1]" />
+
+              <div className="flex h-full flex-col p-6">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3EFA1] text-2xl">
+                  🏦
+                </div>
+
+                <h2 className="text-xl font-extrabold text-[#08553F]">
+                  Repasses
+                </h2>
+
+                <p className="mt-2 text-[#878787]">
+                  Veja valores recebidos, saldo pendente e histórico de repasses.
+                </p>
+
+                <p className="mt-auto pt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                  Ver repasses →
                 </p>
               </div>
             </Link>
