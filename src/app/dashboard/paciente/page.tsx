@@ -411,6 +411,27 @@ export default async function DashboardPacientePage({
             </Link>
 
             <Link
+              href="/dashboard/paciente/pagamentos"
+              className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00CF7B]/15 text-2xl">
+                💳
+              </div>
+
+              <h2 className="text-lg font-extrabold text-[#08553F]">
+                Pagamentos
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#878787]">
+                Acompanhe pagamentos pendentes, aprovados e cancelados.
+              </p>
+
+              <p className="mt-5 font-bold text-[#08553F] group-hover:text-[#00CF7B]">
+                Ver pagamentos →
+              </p>
+            </Link>
+
+            <Link
               href="/dashboard/paciente/receitas"
               className="group block overflow-hidden rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
             >
