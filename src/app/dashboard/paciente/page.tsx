@@ -179,12 +179,13 @@ export default async function DashboardPacientePage({
       availability: true,
       medicalRecord: true,
       prescription: true,
+      payment: true,
       doctor: {
-        include: {
-          user: true,
-        },
+      include: {
+        user: true,
       },
     },
+  },
     orderBy: [
       {
         date: "desc",
@@ -666,7 +667,8 @@ export default async function DashboardPacientePage({
                       )}
 
                       {appointment.status === "CONFIRMED" &&
-                        appointment.meetingUrl && (
+                        appointment.meetingUrl &&
+                        appointment.payment?.status === "PAID" && (
                           <div className="mt-4 rounded-2xl bg-[#00CF7B]/10 p-4">
                             <p className="text-sm font-bold text-[#08553F]">
                               Consulta online disponível
@@ -684,6 +686,27 @@ export default async function DashboardPacientePage({
                             >
                               Entrar na consulta →
                             </a>
+                          </div>
+                        )}
+
+                      {appointment.status === "CONFIRMED" &&
+                        appointment.meetingUrl &&
+                        appointment.payment?.status !== "PAID" && (
+                          <div className="mt-4 rounded-2xl bg-[#F3EFA1] p-4">
+                            <p className="text-sm font-bold text-[#08553F]">
+                              Teleconsulta aguardando pagamento
+                            </p>
+
+                            <p className="mt-1 text-sm text-[#878787]">
+                              O link será liberado assim que o pagamento for confirmado.
+                            </p>
+
+                            <Link
+                              href="/dashboard/paciente/pagamentos"
+                              className="mt-3 inline-flex rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                            >
+                              Ver pagamentos →
+                            </Link>
                           </div>
                         )}
 

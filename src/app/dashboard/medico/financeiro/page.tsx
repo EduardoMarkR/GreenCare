@@ -19,40 +19,33 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function getStatusLabel(status: string) {
-  if (status === "PENDING") return "Pendente";
-  if (status === "CONFIRMED") return "Confirmada";
-  if (status === "COMPLETED") return "Concluída";
-  if (status === "CANCELLED") return "Cancelada";
+function getPaymentStatusLabel(status: string) {
+  if (status === "PENDING") return "Pagamento pendente";
+  if (status === "PAID") return "Pago";
+  if (status === "FAILED") return "Falhou";
+  if (status === "REFUNDED") return "Reembolsado";
+  if (status === "CANCELLED") return "Cancelado";
 
   return status;
 }
 
-function getStatusClass(status: string) {
-  if (status === "COMPLETED") {
-    return "bg-[#00CF7B]/15 text-[#08553F]";
-  }
+function getPaymentStatusClass(status: string) {
+  if (status === "PAID") return "bg-[#00CF7B]/15 text-[#08553F]";
+  if (status === "PENDING") return "bg-[#F3EFA1] text-[#08553F]";
+  if (status === "CANCELLED") return "bg-[#C6C6C6]/30 text-[#878787]";
+  if (status === "FAILED") return "bg-red-100 text-red-700";
+  if (status === "REFUNDED") return "bg-blue-100 text-blue-700";
 
-  if (status === "CONFIRMED") {
-    return "bg-[#F3EFA1] text-[#08553F]";
-  }
-
-  if (status === "PENDING") {
-    return "bg-white text-[#08553F]";
-  }
-
-  return "bg-[#C6C6C6]/30 text-[#878787]";
+  return "bg-white text-[#08553F]";
 }
 
-function calculateFinancialValues(price: number, platformFeePercent: number) {
-  const platformFee = price * (platformFeePercent / 100);
-  const doctorNet = price - platformFee;
+function getAppointmentStatusLabel(status: string) {
+  if (status === "PENDING") return "Consulta pendente";
+  if (status === "CONFIRMED") return "Consulta confirmada";
+  if (status === "COMPLETED") return "Consulta concluída";
+  if (status === "CANCELLED") return "Consulta cancelada";
 
-  return {
-    gross: price,
-    platformFee,
-    doctorNet,
-  };
+  return status;
 }
 
 export default async function FinanceiroMedicoPage() {
@@ -92,83 +85,113 @@ export default async function FinanceiroMedicoPage() {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
   );
 
-  const consultationPrice = Number(doctor.price);
-  const platformFeePercent = Number(doctor.platformFeePercent);
-  const consultationFinancials = calculateFinancialValues(
-    consultationPrice,
-    platformFeePercent
-  );
-
-  const appointmentsThisMonth = await prisma.appointment.findMany({
-    where: {
-      doctorId: doctor.id,
-      date: {
-        gte: startOfMonth,
-        lt: startOfNextMonth,
-      },
-    },
-    include: {
-      patient: {
-        include: {
-          user: true,
+  const [
+    paymentsThisMonth,
+    allPaidPayments,
+    payouts,
+    paymentsCountThisMonth,
+  ] = await Promise.all([
+    prisma.payment.findMany({
+      where: {
+        doctorId: doctor.id,
+        createdAt: {
+          gte: startOfMonth,
+          lt: startOfNextMonth,
         },
       },
-    },
-    orderBy: {
-      date: "desc",
-    },
-  });
+      include: {
+        appointment: true,
+        patient: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    prisma.payment.findMany({
+      where: {
+        doctorId: doctor.id,
+        status: "PAID",
+      },
+    }),
+    prisma.doctorPayout.findMany({
+      where: {
+        doctorId: doctor.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    prisma.payment.count({
+      where: {
+        doctorId: doctor.id,
+        createdAt: {
+          gte: startOfMonth,
+          lt: startOfNextMonth,
+        },
+      },
+    }),
+  ]);
 
-  const completedAppointmentsThisMonth = appointmentsThisMonth.filter(
-    (appointment) => appointment.status === "COMPLETED"
+  const paidPaymentsThisMonth = paymentsThisMonth.filter(
+    (payment) => payment.status === "PAID"
   );
 
-  const receivableAppointmentsThisMonth = appointmentsThisMonth.filter(
-    (appointment) =>
-      appointment.status === "PENDING" || appointment.status === "CONFIRMED"
+  const pendingPaymentsThisMonth = paymentsThisMonth.filter(
+    (payment) => payment.status === "PENDING"
   );
 
-  const cancelledAppointmentsThisMonth = appointmentsThisMonth.filter(
-    (appointment) => appointment.status === "CANCELLED"
+  const cancelledPaymentsThisMonth = paymentsThisMonth.filter(
+    (payment) => payment.status === "CANCELLED"
   );
 
-  const completedCount = completedAppointmentsThisMonth.length;
-  const receivableCount = receivableAppointmentsThisMonth.length;
-  const cancelledCount = cancelledAppointmentsThisMonth.length;
+  const paidFinancials = paidPaymentsThisMonth.reduce(
+    (totals, payment) => ({
+      gross: totals.gross + Number(payment.amount),
+      platformFee: totals.platformFee + Number(payment.platformFee),
+      doctorNet: totals.doctorNet + Number(payment.doctorAmount),
+    }),
+    { gross: 0, platformFee: 0, doctorNet: 0 }
+  );
 
-  const completedFinancials = {
-    gross: completedCount * consultationFinancials.gross,
-    platformFee: completedCount * consultationFinancials.platformFee,
-    doctorNet: completedCount * consultationFinancials.doctorNet,
-  };
-
-  const receivableFinancials = {
-    gross: receivableCount * consultationFinancials.gross,
-    platformFee: receivableCount * consultationFinancials.platformFee,
-    doctorNet: receivableCount * consultationFinancials.doctorNet,
-  };
+  const pendingFinancials = pendingPaymentsThisMonth.reduce(
+    (totals, payment) => ({
+      gross: totals.gross + Number(payment.amount),
+      platformFee: totals.platformFee + Number(payment.platformFee),
+      doctorNet: totals.doctorNet + Number(payment.doctorAmount),
+    }),
+    { gross: 0, platformFee: 0, doctorNet: 0 }
+  );
 
   const projectedFinancials = {
-    gross: completedFinancials.gross + receivableFinancials.gross,
-    platformFee: completedFinancials.platformFee + receivableFinancials.platformFee,
-    doctorNet: completedFinancials.doctorNet + receivableFinancials.doctorNet,
+    gross: paidFinancials.gross + pendingFinancials.gross,
+    platformFee: paidFinancials.platformFee + pendingFinancials.platformFee,
+    doctorNet: paidFinancials.doctorNet + pendingFinancials.doctorNet,
   };
 
-  const allCompletedAppointmentsCount = await prisma.appointment.count({
-    where: {
-      doctorId: doctor.id,
-      status: "COMPLETED",
-    },
-  });
+  const lifetimeFinancials = allPaidPayments.reduce(
+    (totals, payment) => ({
+      gross: totals.gross + Number(payment.amount),
+      platformFee: totals.platformFee + Number(payment.platformFee),
+      doctorNet: totals.doctorNet + Number(payment.doctorAmount),
+    }),
+    { gross: 0, platformFee: 0, doctorNet: 0 }
+  );
 
-  const lifetimeFinancials = {
-    gross: allCompletedAppointmentsCount * consultationFinancials.gross,
-    platformFee:
-      allCompletedAppointmentsCount * consultationFinancials.platformFee,
-    doctorNet: allCompletedAppointmentsCount * consultationFinancials.doctorNet,
-  };
+  const totalPayouts = payouts.reduce(
+    (sum, payout) => sum + Number(payout.amount),
+    0
+  );
 
-  const recentAppointmentsThisMonth = appointmentsThisMonth.slice(0, 6);
+  const availableForPayout = Math.max(
+    lifetimeFinancials.doctorNet - totalPayouts,
+    0
+  );
+
+  const recentPaymentsThisMonth = paymentsThisMonth.slice(0, 8);
 
   return (
     <>
@@ -178,7 +201,7 @@ export default async function FinanceiroMedicoPage() {
         <CannaPageHero
           badge="Financeiro médico"
           title="Dashboard financeiro profissional"
-          description="Acompanhe receita bruta, comissão da plataforma, valor líquido, projeções e movimentações financeiras da sua rotina médica."
+          description="Acompanhe pagamentos reais, comissão da plataforma, valor líquido, saldo para repasse e histórico financeiro das suas consultas."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -208,15 +231,15 @@ export default async function FinanceiroMedicoPage() {
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Receita bruta realizada
+                Receita bruta paga
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(completedFinancials.gross)}
+                {formatCurrency(paidFinancials.gross)}
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                {completedCount} consulta(s) concluída(s)
+                {paidPaymentsThisMonth.length} pagamento(s) aprovado(s)
               </p>
             </div>
 
@@ -226,7 +249,7 @@ export default async function FinanceiroMedicoPage() {
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-white">
-                {formatCurrency(completedFinancials.doctorNet)}
+                {formatCurrency(paidFinancials.doctorNet)}
               </p>
 
               <p className="mt-2 text-sm text-white/70">
@@ -240,11 +263,41 @@ export default async function FinanceiroMedicoPage() {
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(completedFinancials.platformFee)}
+                {formatCurrency(paidFinancials.platformFee)}
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                Comissão aplicada: {platformFeePercent}%
+                Comissão média dos pagamentos aprovados
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Saldo disponível para repasse
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {formatCurrency(availableForPayout)}
+              </p>
+
+              <p className="mt-2 text-sm text-[#878787]">
+                Pagamentos pagos - repasses realizados
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                A receber em aberto
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {formatCurrency(pendingFinancials.doctorNet)}
+              </p>
+
+              <p className="mt-2 text-sm text-[#878787]">
+                {pendingPaymentsThisMonth.length} pagamento(s) pendente(s)
               </p>
             </div>
 
@@ -258,44 +311,13 @@ export default async function FinanceiroMedicoPage() {
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                Realizado + pendente/confirmado
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Valor da consulta
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(consultationPrice)}
-              </p>
-
-              <p className="mt-2 text-sm text-[#878787]">
-                Líquido por consulta:{" "}
-                {formatCurrency(consultationFinancials.doctorNet)}
+                Pago + pendente
               </p>
             </div>
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                A receber em aberto
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(receivableFinancials.doctorNet)}
-              </p>
-
-              <p className="mt-2 text-sm text-[#878787]">
-                {receivableCount} consulta(s) pendente(s)/confirmada(s)
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Líquido histórico estimado
+                Líquido histórico pago
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
@@ -303,39 +325,49 @@ export default async function FinanceiroMedicoPage() {
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                Todas as consultas concluídas
+                Todos os pagamentos aprovados
               </p>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
+          <div className="mt-6 grid gap-6 md:grid-cols-4">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Consultas no mês
+                Pagamentos no mês
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {appointmentsThisMonth.length}
+                {paymentsCountThisMonth}
               </p>
             </div>
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Canceladas no mês
+                Pendentes
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {cancelledCount}
+                {pendingPaymentsThisMonth.length}
               </p>
             </div>
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Comissão aplicada
+                Pagos
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {platformFeePercent}%
+                {paidPaymentsThisMonth.length}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Cancelados
+              </p>
+
+              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                {cancelledPaymentsThisMonth.length}
               </p>
             </div>
           </div>
@@ -344,90 +376,96 @@ export default async function FinanceiroMedicoPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-2xl font-extrabold text-[#08553F]">
-                  Últimos movimentos financeiros
+                  Extrato financeiro
                 </h2>
 
                 <p className="mt-2 text-[#878787]">
-                  Exibindo os 6 movimentos mais recentes do mês com valor bruto,
-                  comissão e líquido.
+                  Exibindo os 8 pagamentos mais recentes do mês com valor bruto,
+                  comissão, líquido e status financeiro.
                 </p>
               </div>
 
               <Link
-                href="/medico/consultas?status=COMPLETED"
+                href="/medico/consultas"
                 className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
               >
-                Ver histórico
+                Ver consultas
               </Link>
             </div>
 
             <div className="mt-6 space-y-4">
-              {recentAppointmentsThisMonth.length === 0 ? (
+              {recentPaymentsThisMonth.length === 0 ? (
                 <div className="rounded-2xl bg-[#F7F4E7] p-5">
                   <p className="font-bold text-[#08553F]">
                     Nenhuma movimentação financeira neste mês.
                   </p>
 
                   <p className="mt-2 text-sm text-[#878787]">
-                    Consultas pendentes, confirmadas, concluídas ou canceladas
+                    Quando pacientes agendarem consultas, os pagamentos
                     aparecerão aqui.
                   </p>
                 </div>
               ) : (
-                recentAppointmentsThisMonth.map((appointment) => {
-                  const isCancelled = appointment.status === "CANCELLED";
-                  const price = isCancelled ? 0 : consultationPrice;
-                  const values = calculateFinancialValues(
-                    price,
-                    platformFeePercent
-                  );
+                recentPaymentsThisMonth.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-extrabold text-[#08553F]">
+                          {payment.patient.user.name}
+                        </p>
 
-                  return (
-                    <div
-                      key={appointment.id}
-                      className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
-                    >
-                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <p className="font-extrabold text-[#08553F]">
-                            {appointment.patient.user.name}
-                          </p>
+                        <p className="mt-2 text-sm font-semibold text-[#08553F]">
+                          Consulta: {formatDate(payment.appointment.date)}
+                        </p>
 
-                          <p className="mt-2 text-sm font-semibold text-[#08553F]">
-                            {formatDate(appointment.date)}
-                          </p>
-
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <span
-                            className={`mt-3 inline-flex rounded-full px-4 py-2 text-xs font-bold ${getStatusClass(
-                              appointment.status
+                            className={`inline-flex rounded-full px-4 py-2 text-xs font-bold ${getPaymentStatusClass(
+                              payment.status
                             )}`}
                           >
-                            {getStatusLabel(appointment.status)}
+                            {getPaymentStatusLabel(payment.status)}
+                          </span>
+
+                          <span className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-[#08553F]">
+                            {getAppointmentStatusLabel(
+                              payment.appointment.status
+                            )}
                           </span>
                         </div>
 
-                        <div className="text-left md:text-right">
-                          <p className="text-sm font-semibold text-[#878787]">
-                            Bruto: {formatCurrency(values.gross)}
+                        {payment.paidAt ? (
+                          <p className="mt-2 text-xs text-[#878787]">
+                            Pago em: {formatDate(payment.paidAt)}
                           </p>
+                        ) : null}
+                      </div>
 
-                          <p className="mt-1 text-sm font-semibold text-[#878787]">
-                            Comissão {platformFeePercent}%:{" "}
-                            {formatCurrency(values.platformFee)}
-                          </p>
+                      <div className="text-left md:text-right">
+                        <p className="text-sm font-semibold text-[#878787]">
+                          Bruto: {formatCurrency(Number(payment.amount))}
+                        </p>
 
-                          <p className="mt-2 text-xl font-extrabold text-[#08553F]">
-                            Líquido: {formatCurrency(values.doctorNet)}
-                          </p>
-                        </div>
+                        <p className="mt-1 text-sm font-semibold text-[#878787]">
+                          Comissão {Number(payment.commissionRate)}%:{" "}
+                          {formatCurrency(Number(payment.platformFee))}
+                        </p>
+
+                        <p className="mt-2 text-xl font-extrabold text-[#08553F]">
+                          Líquido:{" "}
+                          {formatCurrency(Number(payment.doctorAmount))}
+                        </p>
                       </div>
                     </div>
-                  );
-                })
+                  </div>
+                ))
               )}
             </div>
 
-            {appointmentsThisMonth.length > recentAppointmentsThisMonth.length ? (
+            {paymentsThisMonth.length > recentPaymentsThisMonth.length ? (
               <div className="mt-6">
                 <Link
                   href="/medico/consultas"
