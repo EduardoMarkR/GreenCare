@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { createGoogleMeetEvent } from "@/lib/google-meet";
 import { sendEmail } from "@/lib/email";
@@ -11,6 +12,20 @@ function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
   }).format(date);
+}
+
+function calculatePaymentAmounts(price: Prisma.Decimal, platformFeePercent: Prisma.Decimal) {
+  const amount = new Prisma.Decimal(price);
+  const commissionRate = new Prisma.Decimal(platformFeePercent);
+  const platformFee = amount.mul(commissionRate).div(100).toDecimalPlaces(2);
+  const doctorAmount = amount.sub(platformFee).toDecimalPlaces(2);
+
+  return {
+    amount,
+    commissionRate,
+    platformFee,
+    doctorAmount,
+  };
 }
 
 export async function createAppointment(formData: FormData) {
@@ -111,15 +126,38 @@ export async function createAppointment(formData: FormData) {
     );
   }
 
-  const appointment = await prisma.appointment.create({
-    data: {
-      patientId: patient.id,
-      doctorId: availability.doctorId,
-      availabilityId: availability.id,
-      date: availability.date,
-      status: "PENDING",
-      notes,
-    },
+  const paymentAmounts = calculatePaymentAmounts(
+    availability.doctor.price,
+    availability.doctor.platformFeePercent
+  );
+
+  const appointment = await prisma.$transaction(async (tx) => {
+    const createdAppointment = await tx.appointment.create({
+      data: {
+        patientId: patient.id,
+        doctorId: availability.doctorId,
+        availabilityId: availability.id,
+        date: availability.date,
+        status: "PENDING",
+        notes,
+      },
+    });
+
+    await tx.payment.create({
+      data: {
+        appointmentId: createdAppointment.id,
+        patientId: patient.id,
+        doctorId: availability.doctorId,
+        amount: paymentAmounts.amount,
+        platformFee: paymentAmounts.platformFee,
+        doctorAmount: paymentAmounts.doctorAmount,
+        commissionRate: paymentAmounts.commissionRate,
+        status: "PENDING",
+        method: "MANUAL",
+      },
+    });
+
+    return createdAppointment;
   });
 
   try {
