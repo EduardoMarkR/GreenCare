@@ -2,19 +2,18 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Prisma } from "@/generated/prisma";
+import {
+  PaymentGateway,
+  PaymentMethod,
+  Prisma,
+} from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { createGoogleMeetEvent } from "@/lib/google-meet";
-import { sendEmail } from "@/lib/email";
-import { newAppointmentDoctorEmail } from "@/lib/email-templates";
+import { paymentProvider } from "@/lib/payments";
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "UTC",
-  }).format(date);
-}
-
-function calculatePaymentAmounts(price: Prisma.Decimal, platformFeePercent: Prisma.Decimal) {
+function calculatePaymentAmounts(
+  price: Prisma.Decimal,
+  platformFeePercent: Prisma.Decimal
+) {
   const amount = new Prisma.Decimal(price);
   const commissionRate = new Prisma.Decimal(platformFeePercent);
   const platformFee = amount.mul(commissionRate).div(100).toDecimalPlaces(2);
@@ -26,6 +25,14 @@ function calculatePaymentAmounts(price: Prisma.Decimal, platformFeePercent: Pris
     platformFee,
     doctorAmount,
   };
+}
+
+function formatAsaasDueDate(date: Date) {
+  return date.toISOString().split("T")[0];
+}
+
+function onlyNumbers(value?: string | null) {
+  return value?.replace(/\D/g, "") || null;
 }
 
 export async function createAppointment(formData: FormData) {
@@ -131,7 +138,7 @@ export async function createAppointment(formData: FormData) {
     availability.doctor.platformFeePercent
   );
 
-  const appointment = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const createdAppointment = await tx.appointment.create({
       data: {
         patientId: patient.id,
@@ -143,7 +150,7 @@ export async function createAppointment(formData: FormData) {
       },
     });
 
-    await tx.payment.create({
+    const createdPayment = await tx.payment.create({
       data: {
         appointmentId: createdAppointment.id,
         patientId: patient.id,
@@ -153,38 +160,72 @@ export async function createAppointment(formData: FormData) {
         doctorAmount: paymentAmounts.doctorAmount,
         commissionRate: paymentAmounts.commissionRate,
         status: "PENDING",
-        method: "MANUAL",
+        method: PaymentMethod.PIX,
+        gateway: PaymentGateway.ASAAS,
       },
     });
 
-    return createdAppointment;
+    return {
+      appointment: createdAppointment,
+      payment: createdPayment,
+    };
   });
 
-  try {
-    await createGoogleMeetEvent({
-      appointmentId: appointment.id,
-    });
-  } catch (error) {
-    console.error("Erro ao criar Google Meet:", error);
-  }
+  let gatewayCustomerId = patient.paymentCustomerId;
 
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    if (!gatewayCustomerId) {
+      const customer = await paymentProvider.createCustomer({
+        name: patient.user.name,
+        email: patient.user.email,
+        phone: onlyNumbers(patient.phone),
+        cpfCnpj: patient.cpfCnpj,
+      });
 
-    await sendEmail({
-      to: availability.doctor.user.email,
-      subject: "Nova consulta agendada | CannaDoctor",
-      html: newAppointmentDoctorEmail({
-        doctorName: availability.doctor.user.name,
-        patientName: patient.user.name,
-        date: formatDate(availability.date),
-        time: availability.startTime,
-        dashboardUrl: `${appUrl}/dashboard/medico/consultas`,
-      }),
+      gatewayCustomerId = customer.id;
+
+      await prisma.patient.update({
+        where: {
+          id: patient.id,
+        },
+        data: {
+          paymentCustomerId: gatewayCustomerId,
+        },
+      });
+    }
+
+    const charge = await paymentProvider.createCharge({
+      customerId: gatewayCustomerId,
+      value: Number(paymentAmounts.amount),
+      dueDate: formatAsaasDueDate(availability.date),
+      description: `Consulta com ${availability.doctor.user.name} - CannaDoctor`,
+      externalReference: result.payment.id,
+      method: PaymentMethod.PIX,
+    });
+
+    await prisma.payment.update({
+      where: {
+        id: result.payment.id,
+      },
+      data: {
+        gateway: PaymentGateway.ASAAS,
+        gatewayCustomerId,
+        gatewayPaymentId: charge.id,
+        invoiceUrl: charge.invoiceUrl,
+        pixQrCode: charge.pixQrCode,
+        pixCopyPaste: charge.pixCopyPaste,
+        boletoUrl: charge.bankSlipUrl,
+        externalId: charge.id,
+        externalUrl: charge.invoiceUrl,
+      },
     });
   } catch (error) {
-    console.error("Erro ao enviar e-mail de nova consulta:", error);
+    console.error("Erro ao criar cobrança Asaas:", error);
+
+    redirect(
+      `/dashboard/paciente/pagamentos/${result.payment.id}?erro=Não foi possível gerar a cobrança automaticamente. Tente novamente em instantes.`
+    );
   }
 
-  redirect("/dashboard/paciente");
+  redirect(`/dashboard/paciente/pagamentos/${result.payment.id}`);
 }
