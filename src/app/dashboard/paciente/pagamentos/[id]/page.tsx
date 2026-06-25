@@ -134,6 +134,8 @@ export default async function PatientPaymentPage({
     notFound();
   }
 
+  const isPaid = payment.status === "PAID";
+
   return (
     <>
       <Navbar />
@@ -141,8 +143,16 @@ export default async function PatientPaymentPage({
       <main className="bg-[#F7F4E7]">
         <CannaPageHero
           badge="Pagamento"
-          title="Finalize o pagamento da sua consulta"
-          description="Após a confirmação do pagamento, sua consulta será confirmada automaticamente."
+          title={
+            isPaid
+              ? "Pagamento confirmado"
+              : "Finalize o pagamento da sua consulta"
+          }
+          description={
+            isPaid
+              ? "Sua consulta foi confirmada e a teleconsulta já está liberada ou em processo de criação."
+              : "Após a confirmação do pagamento, sua consulta será confirmada automaticamente."
+          }
         />
 
         <section className="mx-auto max-w-5xl px-6 py-16">
@@ -219,8 +229,9 @@ export default async function PatientPaymentPage({
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-[#878787]">
-                  Assim que o pagamento for confirmado pelo gateway, a consulta
-                  será confirmada e a sala de teleconsulta será liberada.
+                  {isPaid
+                    ? "Seu pagamento foi confirmado. A consulta está confirmada e a sala de teleconsulta será exibida assim que estiver disponível."
+                    : "Assim que o pagamento for confirmado pelo gateway, a consulta será confirmada e a sala de teleconsulta será liberada."}
                 </p>
               </div>
 
@@ -233,83 +244,137 @@ export default async function PatientPaymentPage({
             </div>
 
             <aside className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
-                Pagamento online
-              </p>
-
-              <h3 className="mt-3 text-2xl font-extrabold text-[#08553F]">
-                Pague com segurança
-              </h3>
-
-              {payment.pixQrCode ? (
-                <div className="mt-8 rounded-3xl bg-[#F7F4E7] p-5 text-center">
-                  <Image
-                    src={`data:image/png;base64,${payment.pixQrCode}`}
-                    alt="QR Code PIX"
-                    width={224}
-                    height={224}
-                    unoptimized
-                    className="mx-auto h-56 w-56 rounded-2xl bg-white p-3"
-                  />
-
-                  <p className="mt-4 text-sm font-semibold text-[#878787]">
-                    Escaneie o QR Code com o app do seu banco.
-                  </p>
-                </div>
-              ) : null}
-
-              {payment.pixCopyPaste ? (
-                <div className="mt-6">
-                  <p className="mb-2 text-sm font-bold text-[#08553F]">
-                    PIX copia e cola
+              {isPaid ? (
+                <>
+                  <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
+                    Pagamento confirmado
                   </p>
 
-                  <textarea
-                    readOnly
-                    value={payment.pixCopyPaste}
-                    className="h-32 w-full resize-none rounded-3xl border border-[#C6C6C6]/70 bg-[#F7F4E7] p-4 text-sm text-[#08553F] outline-none"
-                  />
-                </div>
-              ) : null}
+                  <div className="mt-8 rounded-3xl bg-[#00CF7B]/10 p-6 text-center">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#00CF7B] text-4xl font-extrabold text-white">
+                      ✓
+                    </div>
 
-              {payment.invoiceUrl ? (
-                <a
-                  href={payment.invoiceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-6 block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#064331]"
-                >
-                  Abrir link de pagamento
-                </a>
-              ) : null}
+                    <h3 className="mt-5 text-2xl font-extrabold text-[#08553F]">
+                      Tudo certo!
+                    </h3>
 
-              {payment.boletoUrl ? (
-                <a
-                  href={payment.boletoUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 block rounded-2xl border border-[#08553F]/30 bg-[#F7F4E7] px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-                >
-                  Abrir boleto
-                </a>
-              ) : null}
+                    <p className="mt-3 text-sm leading-6 text-[#878787]">
+                      Seu pagamento foi confirmado e a consulta já está
+                      liberada.
+                    </p>
+                  </div>
 
-              {!payment.invoiceUrl &&
-              !payment.pixQrCode &&
-              !payment.pixCopyPaste &&
-              !payment.boletoUrl ? (
-                <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
-                  A cobrança ainda não foi gerada. Tente atualizar a página em
-                  alguns instantes.
-                </div>
-              ) : null}
+                  {payment.appointment.meetingUrl ? (
+                    <a
+                      href={payment.appointment.meetingUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-6 block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#064331]"
+                    >
+                      Entrar na teleconsulta
+                    </a>
+                  ) : (
+                    <div className="mt-6 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5 text-sm font-semibold text-[#08553F]">
+                      Estamos finalizando a criação da sala de teleconsulta.
+                    </div>
+                  )}
 
-              <Link
-                href="/dashboard/paciente/pagamentos"
-                className="mt-6 block rounded-2xl border border-[#08553F]/30 px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
-              >
-                Voltar aos pagamentos
-              </Link>
+                  <Link
+                    href="/dashboard/paciente"
+                    className="mt-4 block rounded-2xl border border-[#08553F]/30 bg-[#F7F4E7] px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                  >
+                    Ver minhas consultas
+                  </Link>
+
+                  <Link
+                    href="/dashboard/paciente/pagamentos"
+                    className="mt-4 block rounded-2xl border border-[#08553F]/30 px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                  >
+                    Voltar aos pagamentos
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
+                    Pagamento online
+                  </p>
+
+                  <h3 className="mt-3 text-2xl font-extrabold text-[#08553F]">
+                    Pague com segurança
+                  </h3>
+
+                  {payment.pixQrCode ? (
+                    <div className="mt-8 rounded-3xl bg-[#F7F4E7] p-5 text-center">
+                      <Image
+                        src={`data:image/png;base64,${payment.pixQrCode}`}
+                        alt="QR Code PIX"
+                        width={224}
+                        height={224}
+                        unoptimized
+                        className="mx-auto h-56 w-56 rounded-2xl bg-white p-3"
+                      />
+
+                      <p className="mt-4 text-sm font-semibold text-[#878787]">
+                        Escaneie o QR Code com o app do seu banco.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {payment.pixCopyPaste ? (
+                    <div className="mt-6">
+                      <p className="mb-2 text-sm font-bold text-[#08553F]">
+                        PIX copia e cola
+                      </p>
+
+                      <textarea
+                        readOnly
+                        value={payment.pixCopyPaste}
+                        className="h-32 w-full resize-none rounded-3xl border border-[#C6C6C6]/70 bg-[#F7F4E7] p-4 text-sm text-[#08553F] outline-none"
+                      />
+                    </div>
+                  ) : null}
+
+                  {payment.invoiceUrl ? (
+                    <a
+                      href={payment.invoiceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-6 block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#064331]"
+                    >
+                      Abrir link de pagamento
+                    </a>
+                  ) : null}
+
+                  {payment.boletoUrl ? (
+                    <a
+                      href={payment.boletoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 block rounded-2xl border border-[#08553F]/30 bg-[#F7F4E7] px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                    >
+                      Abrir boleto
+                    </a>
+                  ) : null}
+
+                  {!payment.invoiceUrl &&
+                  !payment.pixQrCode &&
+                  !payment.pixCopyPaste &&
+                  !payment.boletoUrl ? (
+                    <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+                      A cobrança ainda não foi gerada. Tente atualizar a página
+                      em alguns instantes.
+                    </div>
+                  ) : null}
+
+                  <Link
+                    href="/dashboard/paciente/pagamentos"
+                    className="mt-6 block rounded-2xl border border-[#08553F]/30 px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                  >
+                    Voltar aos pagamentos
+                  </Link>
+                </>
+              )}
             </aside>
           </div>
         </section>
