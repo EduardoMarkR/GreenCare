@@ -27,6 +27,10 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatPercent(value: number) {
+  return `${value.toFixed(1).replace(".", ",")}%`;
+}
+
 function getPaymentStatusLabel(status: string) {
   if (status === "PENDING") return "Pagamento pendente";
   if (status === "PAID") return "Pago";
@@ -82,6 +86,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
   const [
     paymentsThisMonth,
+    allPayments,
     allPaidPayments,
     approvedDoctors,
     payouts,
@@ -111,11 +116,15 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
         createdAt: "desc",
       },
     }),
+
+    prisma.payment.findMany(),
+
     prisma.payment.findMany({
       where: {
         status: "PAID",
       },
     }),
+
     prisma.doctor.findMany({
       where: {
         approvalStatus: "APPROVED",
@@ -136,6 +145,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
         createdAt: "desc",
       },
     }),
+
     prisma.doctorPayout.findMany({
       include: {
         doctor: {
@@ -149,6 +159,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
       },
       take: 6,
     }),
+
     prisma.doctorPayout.findMany(),
   ]);
 
@@ -162,6 +173,10 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
   const cancelledPaymentsThisMonth = paymentsThisMonth.filter(
     (payment) => payment.status === "CANCELLED"
+  );
+
+  const failedPaymentsThisMonth = paymentsThisMonth.filter(
+    (payment) => payment.status === "FAILED"
   );
 
   const paidFinancials = paidPaymentsThisMonth.reduce(
@@ -207,6 +222,21 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     0
   );
 
+  const averageTicket =
+    paidPaymentsThisMonth.length > 0
+      ? paidFinancials.gross / paidPaymentsThisMonth.length
+      : 0;
+
+  const paymentConversionRate =
+    paymentsThisMonth.length > 0
+      ? (paidPaymentsThisMonth.length / paymentsThisMonth.length) * 100
+      : 0;
+
+  const platformTakeRate =
+    paidFinancials.gross > 0
+      ? (paidFinancials.platformFee / paidFinancials.gross) * 100
+      : 0;
+
   const doctorsFinancialRanking = approvedDoctors
     .map((doctor) => {
       const gross = doctor.payments.reduce(
@@ -246,9 +276,9 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
       <main className="min-h-screen bg-[#F7F4E7]">
         <CannaPageHero
-          badge="Financeiro admin"
+          badge="Financeiro Enterprise"
           title="Dashboard financeiro da plataforma"
-          description="Acompanhe pagamentos, comissão da plataforma, repasses médicos e liberação financeira das consultas."
+          description="Acompanhe receita, comissão, pagamentos, conversão, ticket médio e repasses médicos em uma visão profissional."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -294,18 +324,17 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </Link>
 
             <Link
-            href="/dashboard/admin/financeiro/exportar"
-            className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
+              href="/dashboard/admin/financeiro/exportar"
+              className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
             >
-            Exportar CSV
+              Exportar CSV
             </Link>
-
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Receita bruta paga
+                Receita bruta paga no mês
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
@@ -327,21 +356,21 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               </p>
 
               <p className="mt-2 text-sm text-white/70">
-                Receita líquida da CannaDoctor
+                Take rate: {formatPercent(platformTakeRate)}
               </p>
             </div>
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Repasses realizados
+                Receita histórica
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(totalPaidToDoctors)}
+                {formatCurrency(lifetimeFinancials.gross)}
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                Total já pago aos médicos
+                Total já pago na plataforma
               </p>
             </div>
 
@@ -356,6 +385,48 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
               <p className="mt-2 text-sm text-[#878787]">
                 Líquido médico pago - repasses
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 md:grid-cols-4">
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Ticket médio pago
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {formatCurrency(averageTicket)}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Conversão de pagamentos
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {formatPercent(paymentConversionRate)}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Repasses realizados
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {formatCurrency(totalPaidToDoctors)}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">
+                Total de pagamentos
+              </p>
+
+              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
+                {allPayments.length}
               </p>
             </div>
           </div>
@@ -392,7 +463,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-4">
+          <div className="mt-6 grid gap-6 md:grid-cols-5">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
                 Pagamentos no mês
@@ -400,6 +471,14 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
                 {paymentsThisMonth.length}
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-[#878787]">Pagos</p>
+
+              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
+                {paidPaymentsThisMonth.length}
               </p>
             </div>
 
@@ -415,11 +494,11 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Cancelados
+                Cancelados/Falhos
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {cancelledPaymentsThisMonth.length}
+                {cancelledPaymentsThisMonth.length + failedPaymentsThisMonth.length}
               </p>
             </div>
 
