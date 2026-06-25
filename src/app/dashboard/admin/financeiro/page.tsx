@@ -1,3 +1,4 @@
+import { PaymentStatus, Prisma } from "@/generated/prisma";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -11,6 +12,9 @@ type Props = {
   searchParams?: Promise<{
     erro?: string;
     sucesso?: string;
+    period?: string;
+    status?: string;
+    doctorId?: string;
   }>;
 };
 
@@ -59,6 +63,57 @@ function getAppointmentStatusLabel(status: string) {
   return status;
 }
 
+function getPeriodRange(period: string) {
+  const now = new Date();
+
+  if (period === "7d") {
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() - 7);
+
+    return {
+      gte: start,
+      lt: now,
+    };
+  }
+
+  if (period === "30d") {
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() - 30);
+
+    return {
+      gte: start,
+      lt: now,
+    };
+  }
+
+  if (period === "all") {
+    return undefined;
+  }
+
+  const startOfMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+
+  const startOfNextMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  );
+
+  return {
+    gte: startOfMonth,
+    lt: startOfNextMonth,
+  };
+}
+
+function getExportHref(period: string, status: string, doctorId: string) {
+  const params = new URLSearchParams();
+
+  params.set("period", period);
+  params.set("status", status);
+  params.set("doctorId", doctorId);
+
+  return `/dashboard/admin/financeiro/exportar?${params.toString()}`;
+}
+
 export default async function FinanceiroAdminPage({ searchParams }: Props) {
   const params = await searchParams;
   const cookieStore = await cookies();
@@ -74,18 +129,32 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     redirect("/");
   }
 
-  const now = new Date();
+  const selectedPeriod = params?.period ?? "month";
+  const selectedStatus = params?.status ?? "all";
+  const selectedDoctorId = params?.doctorId ?? "all";
 
-  const startOfMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
-  );
+  const createdAtRange = getPeriodRange(selectedPeriod);
 
-  const startOfNextMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
-  );
+  const where: Prisma.PaymentWhereInput = {
+    ...(createdAtRange
+      ? {
+          createdAt: createdAtRange,
+        }
+      : {}),
+    ...(selectedStatus !== "all"
+      ? {
+          status: selectedStatus as PaymentStatus,
+        }
+      : {}),
+    ...(selectedDoctorId !== "all"
+      ? {
+          doctorId: selectedDoctorId,
+        }
+      : {}),
+  };
 
   const [
-    paymentsThisMonth,
+    filteredPayments,
     allPayments,
     allPaidPayments,
     approvedDoctors,
@@ -93,12 +162,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     allPayouts,
   ] = await Promise.all([
     prisma.payment.findMany({
-      where: {
-        createdAt: {
-          gte: startOfMonth,
-          lt: startOfNextMonth,
-        },
-      },
+      where,
       include: {
         appointment: true,
         doctor: {
@@ -134,10 +198,11 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
         payments: {
           where: {
             status: "PAID",
-            createdAt: {
-              gte: startOfMonth,
-              lt: startOfNextMonth,
-            },
+            ...(createdAtRange
+              ? {
+                  createdAt: createdAtRange,
+                }
+              : {}),
           },
         },
       },
@@ -163,23 +228,23 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     prisma.doctorPayout.findMany(),
   ]);
 
-  const paidPaymentsThisMonth = paymentsThisMonth.filter(
+  const paidPayments = filteredPayments.filter(
     (payment) => payment.status === "PAID"
   );
 
-  const pendingPaymentsThisMonth = paymentsThisMonth.filter(
+  const pendingPayments = filteredPayments.filter(
     (payment) => payment.status === "PENDING"
   );
 
-  const cancelledPaymentsThisMonth = paymentsThisMonth.filter(
+  const cancelledPayments = filteredPayments.filter(
     (payment) => payment.status === "CANCELLED"
   );
 
-  const failedPaymentsThisMonth = paymentsThisMonth.filter(
+  const failedPayments = filteredPayments.filter(
     (payment) => payment.status === "FAILED"
   );
 
-  const paidFinancials = paidPaymentsThisMonth.reduce(
+  const paidFinancials = paidPayments.reduce(
     (totals, payment) => ({
       gross: totals.gross + Number(payment.amount),
       platformFee: totals.platformFee + Number(payment.platformFee),
@@ -188,7 +253,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     { gross: 0, platformFee: 0, doctorNet: 0 }
   );
 
-  const pendingFinancials = pendingPaymentsThisMonth.reduce(
+  const pendingFinancials = pendingPayments.reduce(
     (totals, payment) => ({
       gross: totals.gross + Number(payment.amount),
       platformFee: totals.platformFee + Number(payment.platformFee),
@@ -223,13 +288,11 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
   );
 
   const averageTicket =
-    paidPaymentsThisMonth.length > 0
-      ? paidFinancials.gross / paidPaymentsThisMonth.length
-      : 0;
+    paidPayments.length > 0 ? paidFinancials.gross / paidPayments.length : 0;
 
   const paymentConversionRate =
-    paymentsThisMonth.length > 0
-      ? (paidPaymentsThisMonth.length / paymentsThisMonth.length) * 100
+    filteredPayments.length > 0
+      ? (paidPayments.length / filteredPayments.length) * 100
       : 0;
 
   const platformTakeRate =
@@ -238,6 +301,9 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
       : 0;
 
   const doctorsFinancialRanking = approvedDoctors
+    .filter((doctor) =>
+      selectedDoctorId === "all" ? true : doctor.id === selectedDoctorId
+    )
     .map((doctor) => {
       const gross = doctor.payments.reduce(
         (sum, payment) => sum + Number(payment.amount),
@@ -268,7 +334,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     .sort((a, b) => b.gross - a.gross)
     .slice(0, 5);
 
-  const recentPaymentsThisMonth = paymentsThisMonth.slice(0, 8);
+  const recentPayments = filteredPayments.slice(0, 8);
 
   return (
     <>
@@ -278,7 +344,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
         <CannaPageHero
           badge="Financeiro Enterprise"
           title="Dashboard financeiro da plataforma"
-          description="Acompanhe receita, comissão, pagamentos, conversão, ticket médio e repasses médicos em uma visão profissional."
+          description="Filtre receitas, pagamentos, médicos, conversão, ticket médio e repasses em uma visão profissional."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -324,17 +390,110 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </Link>
 
             <Link
-              href="/dashboard/admin/financeiro/exportar"
+              href={getExportHref(
+                selectedPeriod,
+                selectedStatus,
+                selectedDoctorId
+              )}
               className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
             >
-              Exportar CSV
+              Exportar CSV filtrado
             </Link>
           </div>
+
+          <form
+            action="/dashboard/admin/financeiro"
+            className="mb-8 grid gap-4 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm md:grid-cols-4"
+          >
+            <div>
+              <label
+                htmlFor="period"
+                className="text-sm font-bold text-[#08553F]"
+              >
+                Período
+              </label>
+
+              <select
+                id="period"
+                name="period"
+                defaultValue={selectedPeriod}
+                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+              >
+                <option value="month">Mês atual</option>
+                <option value="7d">Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+                <option value="all">Todo o período</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="status"
+                className="text-sm font-bold text-[#08553F]"
+              >
+                Status
+              </label>
+
+              <select
+                id="status"
+                name="status"
+                defaultValue={selectedStatus}
+                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+              >
+                <option value="all">Todos</option>
+                <option value="PAID">Pagos</option>
+                <option value="PENDING">Pendentes</option>
+                <option value="CANCELLED">Cancelados</option>
+                <option value="FAILED">Falhos</option>
+                <option value="REFUNDED">Reembolsados</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="doctorId"
+                className="text-sm font-bold text-[#08553F]"
+              >
+                Médico
+              </label>
+
+              <select
+                id="doctorId"
+                name="doctorId"
+                defaultValue={selectedDoctorId}
+                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+              >
+                <option value="all">Todos os médicos</option>
+
+                {approvedDoctors.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end gap-3">
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+              >
+                Aplicar filtros
+              </button>
+
+              <Link
+                href="/dashboard/admin/financeiro"
+                className="rounded-2xl border border-[#08553F]/30 px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+              >
+                Limpar
+              </Link>
+            </div>
+          </form>
 
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Receita bruta paga no mês
+                Receita bruta paga
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
@@ -342,7 +501,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               </p>
 
               <p className="mt-2 text-sm text-[#878787]">
-                {paidPaymentsThisMonth.length} pagamento(s) aprovado(s)
+                {paidPayments.length} pagamento(s) aprovado(s)
               </p>
             </div>
 
@@ -434,7 +593,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Projeção bruta do mês
+                Projeção bruta
               </p>
 
               <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
@@ -466,11 +625,11 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
           <div className="mt-6 grid gap-6 md:grid-cols-5">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
-                Pagamentos no mês
+                Pagamentos filtrados
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {paymentsThisMonth.length}
+                {filteredPayments.length}
               </p>
             </div>
 
@@ -478,7 +637,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               <p className="text-sm font-semibold text-[#878787]">Pagos</p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {paidPaymentsThisMonth.length}
+                {paidPayments.length}
               </p>
             </div>
 
@@ -488,7 +647,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {pendingPaymentsThisMonth.length}
+                {pendingPayments.length}
               </p>
             </div>
 
@@ -498,7 +657,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               </p>
 
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {cancelledPaymentsThisMonth.length + failedPaymentsThisMonth.length}
+                {cancelledPayments.length + failedPayments.length}
               </p>
             </div>
 
@@ -521,14 +680,14 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                 </h2>
 
                 <p className="mt-2 text-[#878787]">
-                  Top médicos por pagamentos aprovados neste mês.
+                  Top médicos por pagamentos aprovados no período filtrado.
                 </p>
 
                 <div className="mt-6 space-y-4">
                   {doctorsFinancialRanking.length === 0 ? (
                     <div className="rounded-2xl bg-[#F7F4E7] p-5">
                       <p className="font-bold text-[#08553F]">
-                        Nenhum médico com pagamento aprovado neste mês.
+                        Nenhum médico com pagamento aprovado neste filtro.
                       </p>
                     </div>
                   ) : (
@@ -636,7 +795,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                   </h2>
 
                   <p className="mt-2 text-[#878787]">
-                    Movimentos financeiros reais criados pela tabela Payment.
+                    Movimentos financeiros de acordo com os filtros aplicados.
                   </p>
                 </div>
 
@@ -649,14 +808,14 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               </div>
 
               <div className="mt-6 space-y-4">
-                {recentPaymentsThisMonth.length === 0 ? (
+                {recentPayments.length === 0 ? (
                   <div className="rounded-2xl bg-[#F7F4E7] p-5">
                     <p className="font-bold text-[#08553F]">
-                      Nenhum pagamento criado neste mês.
+                      Nenhum pagamento encontrado com esses filtros.
                     </p>
                   </div>
                 ) : (
-                  recentPaymentsThisMonth.map((payment) => (
+                  recentPayments.map((payment) => (
                     <div
                       key={payment.id}
                       className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"

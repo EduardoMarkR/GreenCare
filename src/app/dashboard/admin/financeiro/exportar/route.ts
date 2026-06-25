@@ -1,3 +1,4 @@
+import { PaymentStatus, Prisma } from "@/generated/prisma";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -27,17 +28,32 @@ function escapeCsv(value: string | number) {
   return `"${stringValue}"`;
 }
 
-export async function GET() {
-  const cookieStore = await cookies();
+function getPeriodRange(period: string) {
+  const now = new Date();
 
-  const userId = cookieStore.get("userId")?.value;
-  const activeProfile = cookieStore.get("activeProfile")?.value;
+  if (period === "7d") {
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() - 7);
 
-  if (!userId || activeProfile !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    return {
+      gte: start,
+      lt: now,
+    };
   }
 
-  const now = new Date();
+  if (period === "30d") {
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() - 30);
+
+    return {
+      gte: start,
+      lt: now,
+    };
+  }
+
+  if (period === "all") {
+    return undefined;
+  }
 
   const startOfMonth = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
@@ -47,12 +63,47 @@ export async function GET() {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
   );
 
+  return {
+    gte: startOfMonth,
+    lt: startOfNextMonth,
+  };
+}
+
+export async function GET(request: Request) {
+  const cookieStore = await cookies();
+
+  const userId = cookieStore.get("userId")?.value;
+  const activeProfile = cookieStore.get("activeProfile")?.value;
+
+  if (!userId || activeProfile !== "ADMIN") {
+    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+
+  const period = url.searchParams.get("period") ?? "month";
+  const status = url.searchParams.get("status") ?? "all";
+  const doctorId = url.searchParams.get("doctorId") ?? "all";
+
+  const createdAtRange = getPeriodRange(period);
+
   const payments = await prisma.payment.findMany({
     where: {
-      createdAt: {
-        gte: startOfMonth,
-        lt: startOfNextMonth,
-      },
+      ...(createdAtRange
+        ? {
+            createdAt: createdAtRange,
+          }
+        : {}),
+      ...(status !== "all"
+        ? {
+            status: status as PaymentStatus,
+          }
+        : {}),
+      ...(doctorId !== "all"
+        ? {
+            doctorId,
+          }
+        : {}),
     },
     include: {
       appointment: true,
@@ -110,9 +161,11 @@ export async function GET() {
     .map((row) => row.map(escapeCsv).join(";"))
     .join("\n");
 
-  const fileName = `financeiro-cannadoctor-${now.getUTCFullYear()}-${String(
-    now.getUTCMonth() + 1
-  ).padStart(2, "0")}.csv`;
+  const now = new Date();
+
+  const fileName = `financeiro-cannadoctor-${period}-${status}-${now
+    .toISOString()
+    .slice(0, 10)}.csv`;
 
   return new NextResponse(`\uFEFF${csv}`, {
     status: 200,
