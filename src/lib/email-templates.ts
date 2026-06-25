@@ -91,3 +91,34 @@ export function appointmentCancelledEmail(params: {
     </p>
   `);
 }
+
+export function paymentApprovedDoctorEmail(params: {
+  doctorName: string;
+  patientName: string;
+  date: string;
+  time: string;
+  meetUrl?: string | null;
+  dashboardUrl: string;
+}) {
+  return baseEmailTemplate(`
+    <h2 style="color: #08553F;">Consulta confirmada após pagamento</h2>
+    <p>Olá, Dr(a). ${params.doctorName}.</p>
+    <p>O pagamento da consulta foi aprovado e a consulta está confirmada.</p>
+
+    <p><strong>Paciente:</strong> ${params.patientName}</p>
+    <p><strong>Data:</strong> ${params.date}</p>
+    <p><strong>Horário:</strong> ${params.time}</p>
+
+    ${
+      params.meetUrl
+        ? `<p><strong>Link da consulta:</strong><br/><a href="${params.meetUrl}">${params.meetUrl}</a></p>`
+        : `<p>O link da consulta estará disponível no painel quando for gerado.</p>`
+    }
+
+    <p style="margin-top: 28px;">
+      <a href="${params.dashboardUrl}" style="background: #08553F; color: #ffffff; padding: 14px 22px; border-radius: 14px; text-decoration: none; font-weight: bold;">
+        Acessar consulta
+      </a>
+    </p>
+  `);
+}

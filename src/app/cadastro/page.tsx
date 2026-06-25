@@ -102,7 +102,15 @@ export default async function CadastroPage({
                     placeholder="E-mail"
                     className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
                   />
-
+                  <input
+                    type="text"
+                    name="cpfCnpj"
+                    required
+                    placeholder="CPF"
+                    inputMode="numeric"
+                    maxLength={14}
+                    className="w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-4 text-[#08553F] outline-none transition placeholder:text-[#08553F]/45 focus:border-[#00CF7B] focus:bg-white"
+                  />
                   <input
                     type="password"
                     name="password"

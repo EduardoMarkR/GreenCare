@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
+import PaymentStatusWatcher from "./PaymentStatusWatcher";
 
 type PaymentPageProps = {
   params: Promise<{
@@ -64,6 +65,15 @@ function getMethodLabel(method?: string | null) {
   if (method === "MANUAL") return "Manual";
 
   return "Não informado";
+}
+
+function getAppointmentStatusLabel(status: string) {
+  if (status === "PENDING") return "Aguardando pagamento";
+  if (status === "CONFIRMED") return "Confirmada";
+  if (status === "CANCELLED") return "Cancelada";
+  if (status === "COMPLETED") return "Concluída";
+
+  return status;
 }
 
 export default async function PatientPaymentPage({
@@ -130,9 +140,9 @@ export default async function PatientPaymentPage({
 
       <main className="bg-[#F7F4E7]">
         <CannaPageHero
-        badge="Pagamento"
-        title="Finalize o pagamento da sua consulta"
-        description="Após a confirmação do pagamento, sua consulta será confirmada automaticamente."
+          badge="Pagamento"
+          title="Finalize o pagamento da sua consulta"
+          description="Após a confirmação do pagamento, sua consulta será confirmada automaticamente."
         />
 
         <section className="mx-auto max-w-5xl px-6 py-16">
@@ -179,7 +189,8 @@ export default async function PatientPaymentPage({
                 <div className="rounded-3xl bg-[#F7F4E7] p-5">
                   <p className="text-sm font-bold text-[#878787]">Horário</p>
                   <p className="mt-2 text-lg font-extrabold text-[#08553F]">
-                    {payment.appointment.availability?.startTime ?? "Não informado"}
+                    {payment.appointment.availability?.startTime ??
+                      "Não informado"}
                   </p>
                 </div>
 
@@ -204,9 +215,7 @@ export default async function PatientPaymentPage({
                 </p>
 
                 <p className="mt-3 text-lg font-extrabold text-[#08553F]">
-                  {payment.appointment.status === "PENDING"
-                    ? "Aguardando pagamento"
-                    : payment.appointment.status}
+                  {getAppointmentStatusLabel(payment.appointment.status)}
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-[#878787]">
@@ -214,6 +223,13 @@ export default async function PatientPaymentPage({
                   será confirmada e a sala de teleconsulta será liberada.
                 </p>
               </div>
+
+              <PaymentStatusWatcher
+                paymentId={payment.id}
+                initialPaymentStatus={payment.status}
+                initialAppointmentStatus={payment.appointment.status}
+                initialMeetingUrl={payment.appointment.meetingUrl}
+              />
             </div>
 
             <aside className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
@@ -234,7 +250,7 @@ export default async function PatientPaymentPage({
                     height={224}
                     unoptimized
                     className="mx-auto h-56 w-56 rounded-2xl bg-white p-3"
-                    />
+                  />
 
                   <p className="mt-4 text-sm font-semibold text-[#878787]">
                     Escaneie o QR Code com o app do seu banco.

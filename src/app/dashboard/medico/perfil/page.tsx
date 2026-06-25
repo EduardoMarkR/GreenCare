@@ -7,6 +7,12 @@ import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
 import { updateDoctorProfile } from "./actions";
 
+type PerfilMedicoPageProps = {
+  searchParams?: Promise<{
+    success?: string;
+  }>;
+};
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "UTC",
@@ -17,7 +23,12 @@ function renderStars(rating: number) {
   return "★".repeat(rating) + "☆".repeat(5 - rating);
 }
 
-export default async function PerfilMedicoPage() {
+export default async function PerfilMedicoPage({
+  searchParams,
+}: PerfilMedicoPageProps) {
+  const params = await searchParams;
+  const success = params?.success;
+
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
@@ -93,6 +104,12 @@ export default async function PerfilMedicoPage() {
                   Essas informações ajudam pacientes a entenderem sua atuação,
                   especialidade e modelo de atendimento.
                 </p>
+
+                {success === "perfil-atualizado" ? (
+                  <div className="mt-6 rounded-2xl border border-[#00CF7B]/30 bg-[#00CF7B]/10 p-4 text-sm font-bold text-[#08553F]">
+                    Perfil atualizado com sucesso.
+                  </div>
+                ) : null}
 
                 <form action={updateDoctorProfile} className="mt-8 space-y-6">
                   <div>
@@ -319,3 +336,4 @@ export default async function PerfilMedicoPage() {
     </>
   );
 }
+
