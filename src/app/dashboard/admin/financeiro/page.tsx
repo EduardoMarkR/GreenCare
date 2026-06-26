@@ -1,4 +1,4 @@
-import { PaymentStatus, Prisma } from "@/generated/prisma";
+import { PaymentMethod, PaymentStatus, Prisma } from "@/generated/prisma";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -15,6 +15,7 @@ type Props = {
     period?: string;
     status?: string;
     doctorId?: string;
+    method?: string;
   }>;
 };
 
@@ -63,6 +64,18 @@ function getAppointmentStatusLabel(status: string) {
   return status;
 }
 
+
+function getMethodLabel(method?: string | null) {
+  if (method === "PIX") return "PIX";
+  if (method === "CREDIT_CARD") return "Cartão de crédito";
+  if (method === "DEBIT_CARD") return "Cartão de débito";
+  if (method === "BOLETO") return "Boleto";
+  if (method === "BANK_TRANSFER") return "Transferência";
+  if (method === "MANUAL") return "Manual";
+
+  return "Não informado";
+}
+
 function getPeriodRange(period: string) {
   const now = new Date();
 
@@ -104,12 +117,18 @@ function getPeriodRange(period: string) {
   };
 }
 
-function getExportHref(period: string, status: string, doctorId: string) {
+function getExportHref(
+  period: string,
+  status: string,
+  doctorId: string,
+  method: string
+) {
   const params = new URLSearchParams();
 
   params.set("period", period);
   params.set("status", status);
   params.set("doctorId", doctorId);
+  params.set("method", method);
 
   return `/dashboard/admin/financeiro/exportar?${params.toString()}`;
 }
@@ -132,6 +151,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
   const selectedPeriod = params?.period ?? "month";
   const selectedStatus = params?.status ?? "all";
   const selectedDoctorId = params?.doctorId ?? "all";
+  const selectedMethod = params?.method ?? "all";
 
   const createdAtRange = getPeriodRange(selectedPeriod);
 
@@ -149,6 +169,11 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     ...(selectedDoctorId !== "all"
       ? {
           doctorId: selectedDoctorId,
+        }
+      : {}),
+    ...(selectedMethod !== "all"
+      ? {
+          method: selectedMethod as PaymentMethod,
         }
       : {}),
   };
@@ -400,7 +425,8 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               href={getExportHref(
                 selectedPeriod,
                 selectedStatus,
-                selectedDoctorId
+                selectedDoctorId,
+                selectedMethod
               )}
               className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
             >
@@ -410,7 +436,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
           <form
             action="/dashboard/admin/financeiro"
-            className="mb-8 grid gap-4 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm md:grid-cols-4"
+            className="mb-8 grid gap-4 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm lg:grid-cols-5"
           >
             <div>
               <label
@@ -477,6 +503,30 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                     {doctor.user.name}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="method"
+                className="text-sm font-bold text-[#08553F]"
+              >
+                Método
+              </label>
+
+              <select
+                id="method"
+                name="method"
+                defaultValue={selectedMethod}
+                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+              >
+                <option value="all">Todos</option>
+                <option value="PIX">PIX</option>
+                <option value="CREDIT_CARD">Cartão de crédito</option>
+                <option value="DEBIT_CARD">Cartão de débito</option>
+                <option value="BOLETO">Boleto</option>
+                <option value="BANK_TRANSFER">Transferência</option>
+                <option value="MANUAL">Manual</option>
               </select>
             </div>
 
@@ -854,6 +904,10 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                               {getAppointmentStatusLabel(
                                 payment.appointment.status
                               )}
+                            </span>
+
+                            <span className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-[#08553F]">
+                              {getMethodLabel(payment.method)}
                             </span>
                           </div>
 
