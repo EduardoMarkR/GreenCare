@@ -360,7 +360,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </div>
           ) : null}
 
-          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="mb-8 grid gap-3 xl:grid-cols-[repeat(6,max-content)]">
             <Link
               href="/dashboard/admin"
               className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
@@ -387,6 +387,13 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
             >
               Ver médicos
+            </Link>
+
+            <Link
+              href="/dashboard/admin/financeiro/extrato"
+              className="rounded-2xl bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
+            >
+              Extrato financeiro
             </Link>
 
             <Link
