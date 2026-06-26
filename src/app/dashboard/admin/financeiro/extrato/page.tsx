@@ -627,9 +627,19 @@ export default async function AdminFinanceiroExtratoPage({
                         </td>
 
                         <td className="px-5 py-4">
-                          <p className="max-w-[180px] truncate rounded-xl bg-[#F7F4E7] px-3 py-2 text-xs font-bold text-[#08553F]">
+                        <Link
+                            href={`/dashboard/admin/financeiro/${payment.id}`}
+                            className="block max-w-[180px] truncate rounded-xl bg-[#F7F4E7] px-3 py-2 text-xs font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                        >
                             {payment.id}
-                          </p>
+                        </Link>
+
+                        <Link
+                            href={`/dashboard/admin/financeiro/${payment.id}`}
+                            className="mt-2 inline-flex text-xs font-bold text-[#00A86B] transition hover:text-[#08553F]"
+                        >
+                            Ver detalhes
+                        </Link>
                         </td>
                       </tr>
                     ))
