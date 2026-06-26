@@ -1,4 +1,4 @@
-import { PaymentStatus, Prisma } from "@/generated/prisma";
+import { PaymentMethod, PaymentStatus, Prisma } from "@/generated/prisma";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -84,27 +84,35 @@ export async function GET(request: Request) {
   const period = url.searchParams.get("period") ?? "month";
   const status = url.searchParams.get("status") ?? "all";
   const doctorId = url.searchParams.get("doctorId") ?? "all";
+  const method = url.searchParams.get("method") ?? "all";
 
   const createdAtRange = getPeriodRange(period);
 
+  const where: Prisma.PaymentWhereInput = {
+    ...(createdAtRange
+      ? {
+          createdAt: createdAtRange,
+        }
+      : {}),
+    ...(status !== "all"
+      ? {
+          status: status as PaymentStatus,
+        }
+      : {}),
+    ...(doctorId !== "all"
+      ? {
+          doctorId,
+        }
+      : {}),
+    ...(method !== "all"
+  ? {
+      method: method as PaymentMethod,
+    }
+  : {}),
+  };
+
   const payments = await prisma.payment.findMany({
-    where: {
-      ...(createdAtRange
-        ? {
-            createdAt: createdAtRange,
-          }
-        : {}),
-      ...(status !== "all"
-        ? {
-            status: status as PaymentStatus,
-          }
-        : {}),
-      ...(doctorId !== "all"
-        ? {
-            doctorId,
-          }
-        : {}),
-    },
+    where,
     include: {
       appointment: true,
       doctor: {
@@ -163,7 +171,7 @@ export async function GET(request: Request) {
 
   const now = new Date();
 
-  const fileName = `financeiro-cannadoctor-${period}-${status}-${now
+  const fileName = `financeiro-cannadoctor-${period}-${status}-${method}-${now
     .toISOString()
     .slice(0, 10)}.csv`;
 
