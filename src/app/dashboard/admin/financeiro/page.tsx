@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { PaymentMethod, PaymentStatus, Prisma } from "@/generated/prisma";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -6,7 +7,6 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
-import { cancelPayment, markPaymentAsPaid } from "./actions";
 
 type Props = {
   searchParams?: Promise<{
@@ -37,7 +37,7 @@ function formatPercent(value: number) {
 }
 
 function getPaymentStatusLabel(status: string) {
-  if (status === "PENDING") return "Pagamento pendente";
+  if (status === "PENDING") return "Pendente";
   if (status === "PAID") return "Pago";
   if (status === "FAILED") return "Falhou";
   if (status === "REFUNDED") return "Reembolsado";
@@ -51,19 +51,10 @@ function getPaymentStatusClass(status: string) {
   if (status === "PENDING") return "bg-[#F3EFA1] text-[#08553F]";
   if (status === "CANCELLED") return "bg-[#C6C6C6]/30 text-[#878787]";
   if (status === "FAILED") return "bg-red-100 text-red-700";
+  if (status === "REFUNDED") return "bg-blue-100 text-blue-700";
 
   return "bg-white text-[#08553F]";
 }
-
-function getAppointmentStatusLabel(status: string) {
-  if (status === "PENDING") return "Consulta pendente";
-  if (status === "CONFIRMED") return "Consulta confirmada";
-  if (status === "COMPLETED") return "Consulta concluída";
-  if (status === "CANCELLED") return "Consulta cancelada";
-
-  return status;
-}
-
 
 function getMethodLabel(method?: string | null) {
   if (method === "PIX") return "PIX";
@@ -82,21 +73,13 @@ function getPeriodRange(period: string) {
   if (period === "7d") {
     const start = new Date(now);
     start.setUTCDate(start.getUTCDate() - 7);
-
-    return {
-      gte: start,
-      lt: now,
-    };
+    return { gte: start, lt: now };
   }
 
   if (period === "30d") {
     const start = new Date(now);
     start.setUTCDate(start.getUTCDate() - 30);
-
-    return {
-      gte: start,
-      lt: now,
-    };
+    return { gte: start, lt: now };
   }
 
   if (period === "all") {
@@ -133,6 +116,111 @@ function getExportHref(
   return `/dashboard/admin/financeiro/exportar?${params.toString()}`;
 }
 
+function MetricCard({
+  icon,
+  title,
+  value,
+  helper,
+  dark = false,
+}: {
+  icon: string;
+  title: string;
+  value: string;
+  helper: string;
+  dark?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-[2rem] p-6 shadow-sm ${
+        dark ? "bg-[#08553F] text-white" : "bg-white text-[#08553F]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p
+            className={`text-sm font-semibold ${
+              dark ? "text-white/70" : "text-[#878787]"
+            }`}
+          >
+            {title}
+          </p>
+
+          <p className="mt-3 text-3xl font-extrabold md:text-4xl">{value}</p>
+
+          <p
+            className={`mt-2 text-sm ${
+              dark ? "text-white/70" : "text-[#878787]"
+            }`}
+          >
+            {helper}
+          </p>
+        </div>
+
+        <span
+          className={`grid size-12 place-items-center rounded-2xl text-2xl ${
+            dark ? "bg-white/10" : "bg-[#F7F4E7]"
+          }`}
+        >
+          {icon}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ModuleCard({
+  icon,
+  title,
+  href,
+  variant = "default",
+}: {
+  icon: string;
+  title: string;
+  href: string;
+  variant?: "default" | "dark" | "warning" | "accent";
+}) {
+  const className =
+    variant === "dark"
+      ? "bg-[#08553F] text-white hover:bg-[#00CF7B] hover:text-[#08553F]"
+      : variant === "warning"
+        ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+        : variant === "accent"
+          ? "bg-[#F3EFA1] text-[#08553F] hover:bg-[#00CF7B]"
+          : "border border-[#C6C6C6]/60 bg-white text-[#08553F] hover:bg-[#F7F4E7]";
+
+  return (
+    <Link
+      href={href}
+      className={`rounded-[1.5rem] p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl ${className}`}
+    >
+      <span className="text-3xl">{icon}</span>
+      <p className="mt-3 font-extrabold">{title}</p>
+    </Link>
+  );
+}
+
+function SectionCard({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[2rem] bg-white p-6 shadow-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <h2 className="text-2xl font-extrabold text-[#08553F]">{title}</h2>
+
+        {action}
+      </div>
+
+      <div className="mt-6">{children}</div>
+    </section>
+  );
+}
+
 export default async function FinanceiroAdminPage({ searchParams }: Props) {
   const params = await searchParams;
   const cookieStore = await cookies();
@@ -156,101 +244,71 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
   const createdAtRange = getPeriodRange(selectedPeriod);
 
   const where: Prisma.PaymentWhereInput = {
-    ...(createdAtRange
-      ? {
-          createdAt: createdAtRange,
-        }
-      : {}),
+    ...(createdAtRange ? { createdAt: createdAtRange } : {}),
     ...(selectedStatus !== "all"
-      ? {
-          status: selectedStatus as PaymentStatus,
-        }
+      ? { status: selectedStatus as PaymentStatus }
       : {}),
-    ...(selectedDoctorId !== "all"
-      ? {
-          doctorId: selectedDoctorId,
-        }
-      : {}),
+    ...(selectedDoctorId !== "all" ? { doctorId: selectedDoctorId } : {}),
     ...(selectedMethod !== "all"
-      ? {
-          method: selectedMethod as PaymentMethod,
-        }
+      ? { method: selectedMethod as PaymentMethod }
       : {}),
   };
 
   const [
     filteredPayments,
-    allPayments,
     allPaidPayments,
     approvedDoctors,
-    payouts,
     allPayouts,
+    paidWithoutPayoutCount,
+    paidWithoutMeetCount,
+    payoutsWithoutPaymentsCount,
   ] = await Promise.all([
     prisma.payment.findMany({
       where,
       include: {
         appointment: true,
-        doctor: {
-          include: {
-            user: true,
-          },
-        },
-        patient: {
-          include: {
-            user: true,
-          },
-        },
+        doctor: { include: { user: true } },
+        patient: { include: { user: true } },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
-    }),
-
-    prisma.payment.findMany(),
-
-    prisma.payment.findMany({
-      where: {
-        status: "PAID",
-      },
-    }),
-
-    prisma.doctor.findMany({
-      where: {
-        approvalStatus: "APPROVED",
-      },
-      include: {
-        user: true,
-        payments: {
-          where: {
-            status: "PAID",
-            ...(createdAtRange
-              ? {
-                  createdAt: createdAtRange,
-                }
-              : {}),
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    }),
-
-    prisma.doctorPayout.findMany({
-      include: {
-        doctor: {
-          include: {
-            user: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
       take: 6,
     }),
 
+    prisma.payment.findMany({
+      where: { status: "PAID" },
+    }),
+
+    prisma.doctor.findMany({
+      where: { approvalStatus: "APPROVED" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
+    }),
+
     prisma.doctorPayout.findMany(),
+
+    prisma.payment.count({
+      where: {
+        status: "PAID",
+        payoutId: null,
+      },
+    }),
+
+    prisma.payment.count({
+      where: {
+        status: "PAID",
+        appointment: {
+          meetingUrl: null,
+        },
+      },
+    }),
+
+    prisma.doctorPayout.count({
+      where: {
+        payments: {
+          none: {},
+        },
+      },
+    }),
   ]);
 
   const paidPayments = filteredPayments.filter(
@@ -261,14 +319,6 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     (payment) => payment.status === "PENDING"
   );
 
-  const cancelledPayments = filteredPayments.filter(
-    (payment) => payment.status === "CANCELLED"
-  );
-
-  const failedPayments = filteredPayments.filter(
-    (payment) => payment.status === "FAILED"
-  );
-
   const paidFinancials = paidPayments.reduce(
     (totals, payment) => ({
       gross: totals.gross + Number(payment.amount),
@@ -277,21 +327,6 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
     }),
     { gross: 0, platformFee: 0, doctorNet: 0 }
   );
-
-  const pendingFinancials = pendingPayments.reduce(
-    (totals, payment) => ({
-      gross: totals.gross + Number(payment.amount),
-      platformFee: totals.platformFee + Number(payment.platformFee),
-      doctorNet: totals.doctorNet + Number(payment.doctorAmount),
-    }),
-    { gross: 0, platformFee: 0, doctorNet: 0 }
-  );
-
-  const projectedFinancials = {
-    gross: paidFinancials.gross + pendingFinancials.gross,
-    platformFee: paidFinancials.platformFee + pendingFinancials.platformFee,
-    doctorNet: paidFinancials.doctorNet + pendingFinancials.doctorNet,
-  };
 
   const lifetimeFinancials = allPaidPayments.reduce(
     (totals, payment) => ({
@@ -320,46 +355,8 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
       ? (paidPayments.length / filteredPayments.length) * 100
       : 0;
 
-  const platformTakeRate =
-    paidFinancials.gross > 0
-      ? (paidFinancials.platformFee / paidFinancials.gross) * 100
-      : 0;
-
-  const doctorsFinancialRanking = approvedDoctors
-    .filter((doctor) =>
-      selectedDoctorId === "all" ? true : doctor.id === selectedDoctorId
-    )
-    .map((doctor) => {
-      const gross = doctor.payments.reduce(
-        (sum, payment) => sum + Number(payment.amount),
-        0
-      );
-
-      const platformFee = doctor.payments.reduce(
-        (sum, payment) => sum + Number(payment.platformFee),
-        0
-      );
-
-      const doctorNet = doctor.payments.reduce(
-        (sum, payment) => sum + Number(payment.doctorAmount),
-        0
-      );
-
-      return {
-        id: doctor.id,
-        name: doctor.user.name,
-        specialty: doctor.specialty,
-        completedCount: doctor.payments.length,
-        gross,
-        platformFee,
-        doctorNet,
-        feePercent: Number(doctor.platformFeePercent),
-      };
-    })
-    .sort((a, b) => b.gross - a.gross)
-    .slice(0, 5);
-
-  const recentPayments = filteredPayments.slice(0, 8);
+  const totalConciliationAlerts =
+    paidWithoutPayoutCount + paidWithoutMeetCount + payoutsWithoutPaymentsCount;
 
   return (
     <>
@@ -368,8 +365,8 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
       <main className="min-h-screen bg-[#F7F4E7]">
         <CannaPageHero
           badge="Financeiro Enterprise"
-          title="Dashboard financeiro da plataforma"
-          description="Filtre receitas, pagamentos, médicos, conversão, ticket médio e repasses em uma visão profissional."
+          title="Painel financeiro"
+          description="Indicadores, filtros e módulos financeiros do CannaDoctor."
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
@@ -385,533 +382,299 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </div>
           ) : null}
 
-          <div className="mb-8 grid gap-6 lg:grid-cols-3">
+          <div className="mb-8 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-2xl font-extrabold text-[#08553F]">
+                Módulos financeiros
+              </h2>
 
-          <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-extrabold text-[#08553F]">
-              Gestão financeira
-            </h2>
+              <Link
+                href="/dashboard/admin"
+                className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+              >
+                Voltar ao admin
+              </Link>
+            </div>
 
-    <div className="mt-5 grid gap-3">
-      <Link
-        href="/dashboard/admin/financeiro/extrato"
-        className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-      >
-        Extrato financeiro
-      </Link>
+            <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+              <ModuleCard
+                icon="📄"
+                title="Extrato"
+                href="/dashboard/admin/financeiro/extrato"
+                variant="dark"
+              />
 
-      <Link
-        href="/dashboard/admin/financeiro/graficos"
-        className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
-      >
-        Gráficos financeiros
-      </Link>
+              <ModuleCard
+                icon="📊"
+                title="Gráficos"
+                href="/dashboard/admin/financeiro/graficos"
+                variant="accent"
+              />
 
-      <Link
-        href={getExportHref(
-          selectedPeriod,
-          selectedStatus,
-          selectedDoctorId,
-          selectedMethod
-        )}
-        className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-      >
-        Exportar CSV filtrado
-      </Link>
-    </div>
-  </div>
+              <ModuleCard
+                icon="🏦"
+                title="Repasses"
+                href="/dashboard/admin/financeiro/repasses"
+              />
 
-      <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-extrabold text-[#08553F]">
-          Operações
-        </h2>
+              <ModuleCard
+                icon="⚠️"
+                title="Conciliação"
+                href="/dashboard/admin/financeiro/conciliacao"
+                variant="warning"
+              />
 
-        <div className="mt-5 grid gap-3">
-          <Link
-            href="/dashboard/admin/financeiro/repasses"
-            className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-          >
-            Repasses médicos
-          </Link>
+              <ModuleCard
+                icon="📦"
+                title="Exportar CSV"
+                href={getExportHref(
+                  selectedPeriod,
+                  selectedStatus,
+                  selectedDoctorId,
+                  selectedMethod
+                )}
+              />
 
-          <Link
-            href="/dashboard/admin/financeiro/conciliacao"
-            className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-center font-bold text-red-700 transition hover:bg-red-100"
-          >
-            Central de conciliação
-          </Link>
-
-          <Link
-            href="/dashboard/admin/consultas"
-            className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-          >
-            Gerenciar consultas
-          </Link>
-        </div>
-      </div>
-
-      <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-extrabold text-[#08553F]">
-          Administração
-        </h2>
-
-        <div className="mt-5 grid gap-3">
-          <Link
-            href="/dashboard/admin"
-            className="rounded-2xl bg-white px-5 py-3 text-center font-bold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
-          >
-            Voltar ao painel admin
-          </Link>
-
-          <Link
-            href="/dashboard/admin/medicos"
-            className="rounded-2xl bg-white px-5 py-3 text-center font-bold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
-          >
-            Ver médicos
-          </Link>
-        </div>
-      </div>
-    </div>
+              <ModuleCard
+                icon="📅"
+                title="Consultas"
+                href="/dashboard/admin/consultas"
+              />
+            </div>
+          </div>
 
           <form
             action="/dashboard/admin/financeiro"
-            className="mb-8 grid gap-4 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm lg:grid-cols-5"
+            className="mb-8 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm"
           >
-            <div>
-              <label
-                htmlFor="period"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Período
-              </label>
-
-              <select
-                id="period"
-                name="period"
-                defaultValue={selectedPeriod}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="month">Mês atual</option>
-                <option value="7d">Últimos 7 dias</option>
-                <option value="30d">Últimos 30 dias</option>
-                <option value="all">Todo o período</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="status"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Status
-              </label>
-
-              <select
-                id="status"
-                name="status"
-                defaultValue={selectedStatus}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos</option>
-                <option value="PAID">Pagos</option>
-                <option value="PENDING">Pendentes</option>
-                <option value="CANCELLED">Cancelados</option>
-                <option value="FAILED">Falhos</option>
-                <option value="REFUNDED">Reembolsados</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="doctorId"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Médico
-              </label>
-
-              <select
-                id="doctorId"
-                name="doctorId"
-                defaultValue={selectedDoctorId}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos os médicos</option>
-
-                {approvedDoctors.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.user.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="method"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Método
-              </label>
-
-              <select
-                id="method"
-                name="method"
-                defaultValue={selectedMethod}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos</option>
-                <option value="PIX">PIX</option>
-                <option value="CREDIT_CARD">Cartão de crédito</option>
-                <option value="DEBIT_CARD">Cartão de débito</option>
-                <option value="BOLETO">Boleto</option>
-                <option value="BANK_TRANSFER">Transferência</option>
-                <option value="MANUAL">Manual</option>
-              </select>
-            </div>
-
-            <div className="flex items-end gap-3">
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-              >
-                Aplicar filtros
-              </button>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-xl font-extrabold text-[#08553F]">
+                Filtros
+              </h2>
 
               <Link
                 href="/dashboard/admin/financeiro"
-                className="rounded-2xl border border-[#08553F]/30 px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                className="rounded-2xl border border-[#08553F]/30 px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
               >
-                Limpar
+                Limpar filtros
               </Link>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-5">
+              <div>
+                <label
+                  htmlFor="period"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Período
+                </label>
+
+                <select
+                  id="period"
+                  name="period"
+                  defaultValue={selectedPeriod}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="month">Mês atual</option>
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="all">Todo o período</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="status"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Status
+                </label>
+
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue={selectedStatus}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="PAID">Pagos</option>
+                  <option value="PENDING">Pendentes</option>
+                  <option value="CANCELLED">Cancelados</option>
+                  <option value="FAILED">Falhos</option>
+                  <option value="REFUNDED">Reembolsados</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="doctorId"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Médico
+                </label>
+
+                <select
+                  id="doctorId"
+                  name="doctorId"
+                  defaultValue={selectedDoctorId}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos</option>
+
+                  {approvedDoctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="method"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Método
+                </label>
+
+                <select
+                  id="method"
+                  name="method"
+                  defaultValue={selectedMethod}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="PIX">PIX</option>
+                  <option value="CREDIT_CARD">Cartão de crédito</option>
+                  <option value="DEBIT_CARD">Cartão de débito</option>
+                  <option value="BOLETO">Boleto</option>
+                  <option value="BANK_TRANSFER">Transferência</option>
+                  <option value="MANUAL">Manual</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Aplicar filtros
+                </button>
+              </div>
             </div>
           </form>
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Receita bruta paga
-              </p>
+          <div className="mb-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              icon="💰"
+              title="Receita paga"
+              value={formatCurrency(paidFinancials.gross)}
+              helper={`${paidPayments.length} pagamento(s) no filtro`}
+            />
 
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(paidFinancials.gross)}
-              </p>
+            <MetricCard
+              icon="🌿"
+              title="Comissão"
+              value={formatCurrency(paidFinancials.platformFee)}
+              helper="Receita da plataforma"
+              dark
+            />
 
-              <p className="mt-2 text-sm text-[#878787]">
-                {paidPayments.length} pagamento(s) aprovado(s)
-              </p>
-            </div>
+            <MetricCard
+              icon="🎯"
+              title="Ticket médio"
+              value={formatCurrency(averageTicket)}
+              helper="Pagamentos pagos"
+            />
 
-            <div className="rounded-[2rem] bg-[#08553F] p-6 shadow-sm">
-              <p className="text-sm font-semibold text-white/70">
-                Comissão da plataforma
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-white">
-                {formatCurrency(paidFinancials.platformFee)}
-              </p>
-
-              <p className="mt-2 text-sm text-white/70">
-                Take rate: {formatPercent(platformTakeRate)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Receita histórica
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(lifetimeFinancials.gross)}
-              </p>
-
-              <p className="mt-2 text-sm text-[#878787]">
-                Total já pago na plataforma
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Saldo pendente de repasse
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(pendingDoctorPayout)}
-              </p>
-
-              <p className="mt-2 text-sm text-[#878787]">
-                Líquido médico pago - repasses
-              </p>
-            </div>
+            <MetricCard
+              icon="📈"
+              title="Conversão"
+              value={formatPercent(paymentConversionRate)}
+              helper="Pagos sobre filtrados"
+            />
           </div>
 
-          <div className="mt-6 grid gap-6 md:grid-cols-4">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Ticket médio pago
-              </p>
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <SectionCard
+              title="Saúde financeira"
+              action={
+                <Link
+                  href="/dashboard/admin/financeiro/conciliacao"
+                  className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+                >
+                  Abrir conciliação
+                </Link>
+              }
+            >
+              <div className="grid gap-4">
+                <Link
+                  href="/dashboard/admin/financeiro/repasses"
+                  className="rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="font-extrabold text-[#08553F]">
+                      Saldo pendente de repasse
+                    </p>
 
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(averageTicket)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Conversão de pagamentos
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatPercent(paymentConversionRate)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Repasses realizados
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(totalPaidToDoctors)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Total de pagamentos
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {allPayments.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Projeção bruta
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(projectedFinancials.gross)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Comissão projetada
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(projectedFinancials.platformFee)}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Repasse médico projetado
-              </p>
-
-              <p className="mt-3 text-4xl font-extrabold text-[#08553F]">
-                {formatCurrency(projectedFinancials.doctorNet)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-5">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Pagamentos filtrados
-              </p>
-
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {filteredPayments.length}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">Pagos</p>
-
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {paidPayments.length}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Pendentes
-              </p>
-
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {pendingPayments.length}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Cancelados/Falhos
-              </p>
-
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {cancelledPayments.length + failedPayments.length}
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Médicos aprovados
-              </p>
-
-              <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
-                {approvedDoctors.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="space-y-6">
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-                <h2 className="text-2xl font-extrabold text-[#08553F]">
-                  Ranking financeiro médico
-                </h2>
-
-                <p className="mt-2 text-[#878787]">
-                  Top médicos por pagamentos aprovados no período filtrado.
-                </p>
-
-                <div className="mt-6 space-y-4">
-                  {doctorsFinancialRanking.length === 0 ? (
-                    <div className="rounded-2xl bg-[#F7F4E7] p-5">
-                      <p className="font-bold text-[#08553F]">
-                        Nenhum médico com pagamento aprovado neste filtro.
-                      </p>
-                    </div>
-                  ) : (
-                    doctorsFinancialRanking.map((doctor, index) => (
-                      <div
-                        key={doctor.id}
-                        className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-sm font-black text-[#00CF7B]">
-                              #{index + 1}
-                            </p>
-
-                            <p className="mt-1 font-extrabold text-[#08553F]">
-                              {doctor.name}
-                            </p>
-
-                            <p className="mt-1 text-sm text-[#878787]">
-                              {doctor.specialty}
-                            </p>
-
-                            <p className="mt-2 text-xs font-bold text-[#08553F]">
-                              {doctor.completedCount} pagamento(s) • Comissão{" "}
-                              {doctor.feePercent}%
-                            </p>
-
-                            <p className="mt-2 text-xs text-[#878787]">
-                              Plataforma: {formatCurrency(doctor.platformFee)} •
-                              Médico: {formatCurrency(doctor.doctorNet)}
-                            </p>
-                          </div>
-
-                          <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
-                            {formatCurrency(doctor.gross)}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-extrabold text-[#08553F]">
-                      Repasses recentes
-                    </h2>
-
-                    <p className="mt-2 text-[#878787]">
-                      Últimos repasses registrados aos médicos.
+                    <p className="text-right text-xl font-extrabold text-[#08553F]">
+                      {formatCurrency(pendingDoctorPayout)}
                     </p>
                   </div>
-
-                  <Link
-                    href="/dashboard/admin/financeiro/repasses"
-                    className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
-                  >
-                    Ver repasses
-                  </Link>
-                </div>
-
-                <div className="mt-6 space-y-4">
-                  {payouts.length === 0 ? (
-                    <div className="rounded-2xl bg-[#F7F4E7] p-5">
-                      <p className="font-bold text-[#08553F]">
-                        Nenhum repasse registrado ainda.
-                      </p>
-                    </div>
-                  ) : (
-                    payouts.map((payout) => (
-                      <div
-                        key={payout.id}
-                        className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <p className="font-extrabold text-[#08553F]">
-                              Dr(a). {payout.doctor.user.name}
-                            </p>
-
-                            <p className="mt-1 text-sm text-[#878787]">
-                              {formatDate(payout.startDate)} até{" "}
-                              {formatDate(payout.endDate)}
-                            </p>
-                          </div>
-
-                          <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
-                            {formatCurrency(Number(payout.amount))}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-2xl font-extrabold text-[#08553F]">
-                    Pagamentos recentes
-                  </h2>
-
-                  <p className="mt-2 text-[#878787]">
-                    Movimentos financeiros de acordo com os filtros aplicados.
-                  </p>
-                </div>
+                </Link>
 
                 <Link
-                  href="/dashboard/admin/consultas"
-                  className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                  href="/dashboard/admin/financeiro/conciliacao"
+                  className="rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
                 >
-                  Ver consultas
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="font-extrabold text-[#08553F]">
+                      Alertas de conciliação
+                    </p>
+
+                    <p className="text-3xl font-extrabold text-[#08553F]">
+                      {totalConciliationAlerts}
+                    </p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/dashboard/admin/financeiro/extrato?status=PENDING"
+                  className="rounded-3xl bg-[#F7F4E7] p-5 transition hover:bg-[#F3EFA1]"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="font-extrabold text-[#08553F]">
+                      Pagamentos pendentes
+                    </p>
+
+                    <p className="text-3xl font-extrabold text-[#08553F]">
+                      {pendingPayments.length}
+                    </p>
+                  </div>
                 </Link>
               </div>
+            </SectionCard>
 
-              <div className="mt-6 space-y-4">
-                {recentPayments.length === 0 ? (
+            <SectionCard
+              title="Pagamentos recentes"
+              action={
+                <Link
+                  href="/dashboard/admin/financeiro/extrato"
+                  className="rounded-2xl bg-[#08553F] px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Ver extrato
+                </Link>
+              }
+            >
+              <div className="space-y-4">
+                {filteredPayments.length === 0 ? (
                   <div className="rounded-2xl bg-[#F7F4E7] p-5">
                     <p className="font-bold text-[#08553F]">
                       Nenhum pagamento encontrado com esses filtros.
                     </p>
                   </div>
                 ) : (
-                  recentPayments.map((payment) => (
+                  filteredPayments.map((payment) => (
                     <div
                       key={payment.id}
                       className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
@@ -919,15 +682,12 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div>
                           <p className="font-extrabold text-[#08553F]">
-                            Dr(a). {payment.doctor.user.name}
+                            {payment.patient.user.name}
                           </p>
 
                           <p className="mt-1 text-sm text-[#878787]">
-                            Paciente: {payment.patient.user.name}
-                          </p>
-
-                          <p className="mt-2 text-sm font-semibold text-[#08553F]">
-                            Consulta: {formatDate(payment.appointment.date)}
+                            Dr(a). {payment.doctor.user.name} •{" "}
+                            {formatDate(payment.appointment.date)}
                           </p>
 
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -940,78 +700,34 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                             </span>
 
                             <span className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-[#08553F]">
-                              {getAppointmentStatusLabel(
-                                payment.appointment.status
-                              )}
-                            </span>
-
-                            <span className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-[#08553F]">
                               {getMethodLabel(payment.method)}
                             </span>
                           </div>
-
-                          {payment.paidAt ? (
-                            <p className="mt-2 text-xs text-[#878787]">
-                              Pago em: {formatDate(payment.paidAt)}
-                            </p>
-                          ) : null}
                         </div>
 
                         <div className="text-left md:text-right">
-                          <p className="text-sm font-semibold text-[#878787]">
-                            Bruto: {formatCurrency(Number(payment.amount))}
+                          <p className="text-xl font-extrabold text-[#08553F]">
+                            {formatCurrency(Number(payment.amount))}
                           </p>
 
-                          <p className="mt-1 text-sm font-semibold text-[#878787]">
-                            Comissão {Number(payment.commissionRate)}%:{" "}
+                          <p className="mt-1 text-sm text-[#878787]">
+                            Comissão:{" "}
                             {formatCurrency(Number(payment.platformFee))}
                           </p>
 
-                          <p className="mt-2 text-xl font-extrabold text-[#08553F]">
-                            Médico:{" "}
-                            {formatCurrency(Number(payment.doctorAmount))}
-                          </p>
-
-                          {payment.status === "PENDING" ? (
-                            <div className="mt-4 flex flex-col gap-2">
-                              <form action={markPaymentAsPaid}>
-                                <input
-                                  type="hidden"
-                                  name="paymentId"
-                                  value={payment.id}
-                                />
-
-                                <button
-                                  type="submit"
-                                  className="w-full rounded-2xl bg-[#00CF7B] px-5 py-3 text-sm font-extrabold text-[#08553F] transition hover:bg-[#F3EFA1]"
-                                >
-                                  Marcar como pago
-                                </button>
-                              </form>
-
-                              <form action={cancelPayment}>
-                                <input
-                                  type="hidden"
-                                  name="paymentId"
-                                  value={payment.id}
-                                />
-
-                                <button
-                                  type="submit"
-                                  className="w-full rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-extrabold text-red-700 transition hover:bg-red-50"
-                                >
-                                  Cancelar pagamento
-                                </button>
-                              </form>
-                            </div>
-                          ) : null}
+                          <Link
+                            href={`/dashboard/admin/financeiro/${payment.id}`}
+                            className="mt-4 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
+                          >
+                            Ver pagamento
+                          </Link>
                         </div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-            </div>
+            </SectionCard>
           </div>
         </section>
       </main>
