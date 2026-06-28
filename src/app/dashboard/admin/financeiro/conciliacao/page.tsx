@@ -4,7 +4,16 @@ import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
+import SubmitButton from "@/components/SubmitButton";
 import { prisma } from "@/lib/prisma";
+import { recreateGoogleMeet } from "./actions";
+
+type Props = {
+  searchParams?: Promise<{
+    success?: string;
+    erro?: string;
+  }>;
+};
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -19,7 +28,53 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-export default async function AdminFinanceiroConciliacaoPage() {
+function getSuccessMessage(success?: string) {
+  if (success === "meet-recriado") {
+    return "Google Meet recriado com sucesso.";
+  }
+
+  return null;
+}
+
+function getErrorMessage(erro?: string) {
+  if (erro === "pagamento-nao-informado") {
+    return "Pagamento não informado.";
+  }
+
+  if (erro === "pagamento-nao-encontrado") {
+    return "Pagamento não encontrado.";
+  }
+
+  if (erro === "consulta-nao-encontrada") {
+    return "Consulta vinculada ao pagamento não encontrada.";
+  }
+
+  if (erro === "meet-ja-existe") {
+    return "Esta consulta já possui link do Google Meet.";
+  }
+
+  if (erro === "horario-nao-encontrado") {
+    return "Horário da consulta não encontrado.";
+  }
+
+  if (erro === "google-nao-conectado") {
+    return "O médico ainda não conectou o Google Calendar.";
+  }
+
+  if (erro === "meet-nao-gerado") {
+    return "O Google não retornou um link de Meet para esta consulta.";
+  }
+
+  if (erro === "erro-google-meet") {
+    return "Não foi possível recriar o Google Meet. Verifique os escopos da integração Google Calendar.";
+  }
+
+  return null;
+}
+
+export default async function AdminFinanceiroConciliacaoPage({
+  searchParams,
+}: Props) {
   const cookieStore = await cookies();
 
   const userId = cookieStore.get("userId")?.value;
@@ -27,6 +82,10 @@ export default async function AdminFinanceiroConciliacaoPage() {
 
   if (!userId) redirect("/login");
   if (activeProfile !== "ADMIN") redirect("/");
+
+  const params = await searchParams;
+  const successMessage = getSuccessMessage(params?.success);
+  const errorMessage = getErrorMessage(params?.erro);
 
   const [
     paidWithPendingAppointment,
@@ -171,6 +230,18 @@ export default async function AdminFinanceiroConciliacaoPage() {
         />
 
         <section className="mx-auto max-w-7xl px-6 py-12">
+          {successMessage ? (
+            <div className="mb-8 rounded-2xl border border-[#00CF7B]/30 bg-[#00CF7B]/10 p-4 text-sm font-bold text-[#08553F] shadow-sm">
+              ✅ {successMessage}
+            </div>
+          ) : null}
+
+          {errorMessage ? (
+            <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700 shadow-sm">
+              ⚠️ {errorMessage}
+            </div>
+          ) : null}
+
           <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/dashboard/admin/financeiro"
@@ -281,6 +352,7 @@ export default async function AdminFinanceiroConciliacaoPage() {
                   doctorName={payment.doctor.user.name}
                   date={payment.createdAt}
                   amount={Number(payment.amount)}
+                  showRecreateMeet
                 />
               ))}
             </IssueSection>
@@ -417,6 +489,7 @@ function PaymentIssueCard({
   date,
   amount,
   highlightLabel = "Valor",
+  showRecreateMeet = false,
 }: Readonly<{
   paymentId: string;
   appointmentId?: string | null;
@@ -425,6 +498,7 @@ function PaymentIssueCard({
   date: Date;
   amount: number;
   highlightLabel?: string;
+  showRecreateMeet?: boolean;
 }>) {
   return (
     <div className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
@@ -463,6 +537,19 @@ function PaymentIssueCard({
           >
             Abrir consulta
           </Link>
+        ) : null}
+
+        {showRecreateMeet ? (
+          <form action={recreateGoogleMeet}>
+            <input type="hidden" name="paymentId" value={paymentId} />
+
+            <SubmitButton
+              loadingText="Recriando..."
+              className="rounded-xl bg-[#F3EFA1] px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#00CF7B] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Recriar Meet
+            </SubmitButton>
+          </form>
         ) : null}
       </div>
     </div>

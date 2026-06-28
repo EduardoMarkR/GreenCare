@@ -293,3 +293,54 @@ export async function generateFreeSlotsFromGoogleCalendar({
 
   return freeSlots;
 }
+
+export async function createGoogleMeetForAppointment({
+  connection,
+  summary,
+  description,
+  startDateTime,
+  endDateTime,
+}: {
+  connection: GoogleCalendarConnection;
+  summary: string;
+  description?: string;
+  startDateTime: Date;
+  endDateTime: Date;
+}) {
+  const auth = await getValidOAuthClient(connection);
+
+  const calendar = google.calendar({
+    version: "v3",
+    auth,
+  });
+
+  const response = await calendar.events.insert({
+    calendarId: "primary",
+    conferenceDataVersion: 1,
+    requestBody: {
+      summary,
+      description,
+      start: {
+        dateTime: startDateTime.toISOString(),
+        timeZone: "America/Sao_Paulo",
+      },
+      end: {
+        dateTime: endDateTime.toISOString(),
+        timeZone: "America/Sao_Paulo",
+      },
+      conferenceData: {
+        createRequest: {
+          requestId: crypto.randomUUID(),
+          conferenceSolutionKey: {
+            type: "hangoutsMeet",
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    googleEventId: response.data.id ?? null,
+    meetingUrl: response.data.hangoutLink ?? null,
+  };
+}
