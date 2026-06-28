@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 type Props = {
   searchParams?: Promise<{
     period?: string;
+    competence?: string;
     status?: string;
     doctorId?: string;
     method?: string;
@@ -36,6 +37,29 @@ function formatCurrency(value: number) {
     style: "currency",
     currency: "BRL",
   }).format(value);
+}
+
+function getCurrentCompetence() {
+  const now = new Date();
+
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
+}
+
+function getCompetenceLabel(competence: string) {
+  const [year, month] = competence.split("-").map(Number);
+
+  if (!year || !month) return "Competência inválida";
+
+  const date = new Date(Date.UTC(year, month - 1, 1));
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function getPaymentStatusLabel(status: string) {
@@ -69,8 +93,22 @@ function getMethodLabel(method?: string | null) {
   return "Não informado";
 }
 
-function getPeriodRange(period: string) {
+function getPeriodRange(period: string, competence: string) {
   const now = new Date();
+
+  if (period === "competence") {
+    const [year, month] = competence.split("-").map(Number);
+
+    if (!year || !month) return undefined;
+
+    const startOfCompetence = new Date(Date.UTC(year, month - 1, 1));
+    const startOfNextCompetence = new Date(Date.UTC(year, month, 1));
+
+    return {
+      gte: startOfCompetence,
+      lt: startOfNextCompetence,
+    };
+  }
 
   if (period === "7d") {
     const start = new Date(now);
@@ -97,11 +135,11 @@ function getPeriodRange(period: string) {
   }
 
   const startOfMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   );
 
   const startOfNextMonth = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
   );
 
   return {
@@ -110,18 +148,32 @@ function getPeriodRange(period: string) {
   };
 }
 
-function getExportHref(
-  period: string,
-  status: string,
-  doctorId: string,
-  method: string
-) {
+function getExportHref({
+  period,
+  competence,
+  status,
+  doctorId,
+  method,
+  q,
+}: {
+  period: string;
+  competence: string;
+  status: string;
+  doctorId: string;
+  method: string;
+  q: string;
+}) {
   const params = new URLSearchParams();
 
   params.set("period", period);
+  params.set("competence", competence);
   params.set("status", status);
   params.set("doctorId", doctorId);
   params.set("method", method);
+
+  if (q) {
+    params.set("q", q);
+  }
 
   return `/dashboard/admin/financeiro/exportar?${params.toString()}`;
 }
@@ -135,42 +187,26 @@ export default async function AdminFinanceiroExtratoPage({
   const userId = cookieStore.get("userId")?.value;
   const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId) {
-    redirect("/login");
-  }
-
-  if (activeProfile !== "ADMIN") {
-    redirect("/");
-  }
+  if (!userId) redirect("/login");
+  if (activeProfile !== "ADMIN") redirect("/");
 
   const selectedPeriod = params?.period ?? "month";
+  const selectedCompetence = params?.competence ?? getCurrentCompetence();
   const selectedStatus = params?.status ?? "all";
   const selectedDoctorId = params?.doctorId ?? "all";
   const selectedMethod = params?.method ?? "all";
   const search = params?.q?.trim() ?? "";
 
-  const createdAtRange = getPeriodRange(selectedPeriod);
+  const createdAtRange = getPeriodRange(selectedPeriod, selectedCompetence);
 
   const where: Prisma.PaymentWhereInput = {
-    ...(createdAtRange
-      ? {
-          createdAt: createdAtRange,
-        }
-      : {}),
+    ...(createdAtRange ? { createdAt: createdAtRange } : {}),
     ...(selectedStatus !== "all"
-      ? {
-          status: selectedStatus as PaymentStatus,
-        }
+      ? { status: selectedStatus as PaymentStatus }
       : {}),
-    ...(selectedDoctorId !== "all"
-      ? {
-          doctorId: selectedDoctorId,
-        }
-      : {}),
+    ...(selectedDoctorId !== "all" ? { doctorId: selectedDoctorId } : {}),
     ...(selectedMethod !== "all"
-      ? {
-          method: selectedMethod as PaymentMethod,
-        }
+      ? { method: selectedMethod as PaymentMethod }
       : {}),
     ...(search
       ? {
@@ -275,18 +311,29 @@ export default async function AdminFinanceiroExtratoPage({
 
   const totalGross = payments.reduce(
     (sum, payment) => sum + Number(payment.amount),
-    0
+    0,
   );
 
   const totalPlatformFee = payments.reduce(
     (sum, payment) => sum + Number(payment.platformFee),
-    0
+    0,
   );
 
   const totalDoctorAmount = payments.reduce(
     (sum, payment) => sum + Number(payment.doctorAmount),
-    0
+    0,
   );
+
+  const activePeriodLabel =
+    selectedPeriod === "competence"
+      ? `Competência: ${getCompetenceLabel(selectedCompetence)}`
+      : selectedPeriod === "7d"
+        ? "Últimos 7 dias"
+        : selectedPeriod === "30d"
+          ? "Últimos 30 dias"
+          : selectedPeriod === "all"
+            ? "Todo o período"
+            : "Mês atual";
 
   return (
     <>
@@ -309,12 +356,14 @@ export default async function AdminFinanceiroExtratoPage({
             </Link>
 
             <Link
-              href={getExportHref(
-                selectedPeriod,
-                selectedStatus,
-                selectedDoctorId,
-                selectedMethod
-              )}
+              href={getExportHref({
+                period: selectedPeriod,
+                competence: selectedCompetence,
+                status: selectedStatus,
+                doctorId: selectedDoctorId,
+                method: selectedMethod,
+                q: search,
+              })}
               className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
             >
               Exportar CSV filtrado
@@ -323,130 +372,156 @@ export default async function AdminFinanceiroExtratoPage({
 
           <form
             action="/dashboard/admin/financeiro/extrato"
-            className="mb-8 grid gap-4 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm lg:grid-cols-6"
+            className="mb-8 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm"
           >
-            <div>
-              <label
-                htmlFor="period"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Período
-              </label>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="period"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Período
+                </label>
 
-              <select
-                id="period"
-                name="period"
-                defaultValue={selectedPeriod}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="month">Mês atual</option>
-                <option value="7d">Últimos 7 dias</option>
-                <option value="30d">Últimos 30 dias</option>
-                <option value="all">Todo o período</option>
-              </select>
+                <select
+                  id="period"
+                  name="period"
+                  defaultValue={selectedPeriod}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="month">Mês atual</option>
+                  <option value="competence">Competência</option>
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="all">Todo o período</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="competence"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Competência
+                </label>
+
+                <input
+                  id="competence"
+                  type="month"
+                  name="competence"
+                  defaultValue={selectedCompetence}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="status"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Status
+                </label>
+
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue={selectedStatus}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="PAID">Pagos</option>
+                  <option value="PENDING">Pendentes</option>
+                  <option value="CANCELLED">Cancelados</option>
+                  <option value="FAILED">Falhos</option>
+                  <option value="REFUNDED">Reembolsados</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="method"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Método
+                </label>
+
+                <select
+                  id="method"
+                  name="method"
+                  defaultValue={selectedMethod}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="PIX">PIX</option>
+                  <option value="CREDIT_CARD">Cartão de crédito</option>
+                  <option value="DEBIT_CARD">Cartão de débito</option>
+                  <option value="BOLETO">Boleto</option>
+                  <option value="BANK_TRANSFER">Transferência</option>
+                  <option value="MANUAL">Manual</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="doctorId"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Médico
+                </label>
+
+                <select
+                  id="doctorId"
+                  name="doctorId"
+                  defaultValue={selectedDoctorId}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos os médicos</option>
+
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="q" className="text-sm font-bold text-[#08553F]">
+                  Busca
+                </label>
+
+                <input
+                  id="q"
+                  name="q"
+                  defaultValue={search}
+                  placeholder="Paciente, médico ou ID"
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none placeholder:text-[#878787]"
+                />
+              </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="status"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Status
-              </label>
-
-              <select
-                id="status"
-                name="status"
-                defaultValue={selectedStatus}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos</option>
-                <option value="PAID">Pagos</option>
-                <option value="PENDING">Pendentes</option>
-                <option value="CANCELLED">Cancelados</option>
-                <option value="FAILED">Falhos</option>
-                <option value="REFUNDED">Reembolsados</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="method"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Método
-              </label>
-
-              <select
-                id="method"
-                name="method"
-                defaultValue={selectedMethod}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos</option>
-                <option value="PIX">PIX</option>
-                <option value="CREDIT_CARD">Cartão de crédito</option>
-                <option value="DEBIT_CARD">Cartão de débito</option>
-                <option value="BOLETO">Boleto</option>
-                <option value="BANK_TRANSFER">Transferência</option>
-                <option value="MANUAL">Manual</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="doctorId"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Médico
-              </label>
-
-              <select
-                id="doctorId"
-                name="doctorId"
-                defaultValue={selectedDoctorId}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos os médicos</option>
-
-                {doctors.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.user.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="q" className="text-sm font-bold text-[#08553F]">
-                Busca
-              </label>
-
-              <input
-                id="q"
-                name="q"
-                defaultValue={search}
-                placeholder="Paciente, médico ou ID"
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none placeholder:text-[#878787]"
-              />
-            </div>
-
-            <div className="flex items-end gap-3">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="submit"
-                className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F] sm:min-w-36"
               >
                 Filtrar
               </button>
 
               <Link
                 href="/dashboard/admin/financeiro/extrato"
-                className="rounded-2xl border border-[#08553F]/30 px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                className="rounded-2xl border border-[#08553F]/30 px-6 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7] sm:min-w-36"
               >
                 Limpar
               </Link>
             </div>
           </form>
+
+          <div className="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold text-[#08553F]">
+              Filtro ativo: {activePeriodLabel}
+            </p>
+          </div>
 
           <div className="mb-8 grid gap-6 md:grid-cols-3">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
@@ -486,9 +561,7 @@ export default async function AdminFinanceiroExtratoPage({
                 {formatCurrency(totalDoctorAmount)}
               </p>
 
-              <p className="mt-2 text-sm text-[#878787]">
-                Valor bruto médico
-              </p>
+              <p className="mt-2 text-sm text-[#878787]">Valor bruto médico</p>
             </div>
           </div>
 
@@ -585,7 +658,7 @@ export default async function AdminFinanceiroExtratoPage({
                         <td className="px-5 py-4">
                           <span
                             className={`inline-flex rounded-full px-4 py-2 text-xs font-bold ${getPaymentStatusClass(
-                              payment.status
+                              payment.status,
                             )}`}
                           >
                             {getPaymentStatusLabel(payment.status)}
@@ -627,19 +700,19 @@ export default async function AdminFinanceiroExtratoPage({
                         </td>
 
                         <td className="px-5 py-4">
-                        <Link
+                          <Link
                             href={`/dashboard/admin/financeiro/${payment.id}`}
                             className="block max-w-[180px] truncate rounded-xl bg-[#F7F4E7] px-3 py-2 text-xs font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-                        >
+                          >
                             {payment.id}
-                        </Link>
+                          </Link>
 
-                        <Link
+                          <Link
                             href={`/dashboard/admin/financeiro/${payment.id}`}
                             className="mt-2 inline-flex text-xs font-bold text-[#00A86B] transition hover:text-[#08553F]"
-                        >
+                          >
                             Ver detalhes
-                        </Link>
+                          </Link>
                         </td>
                       </tr>
                     ))

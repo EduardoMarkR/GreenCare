@@ -28,8 +28,31 @@ function escapeCsv(value: string | number) {
   return `"${stringValue}"`;
 }
 
-function getPeriodRange(period: string) {
+function getCurrentCompetence() {
   const now = new Date();
+
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function getPeriodRange(period: string, competence: string) {
+  const now = new Date();
+
+  if (period === "competence") {
+    const [year, month] = competence.split("-").map(Number);
+
+    if (!year || !month) return undefined;
+
+    const startOfCompetence = new Date(Date.UTC(year, month - 1, 1));
+    const startOfNextCompetence = new Date(Date.UTC(year, month, 1));
+
+    return {
+      gte: startOfCompetence,
+      lt: startOfNextCompetence,
+    };
+  }
 
   if (period === "7d") {
     const start = new Date(now);
@@ -82,33 +105,78 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
 
   const period = url.searchParams.get("period") ?? "month";
+  const competence =
+    url.searchParams.get("competence") ?? getCurrentCompetence();
   const status = url.searchParams.get("status") ?? "all";
   const doctorId = url.searchParams.get("doctorId") ?? "all";
   const method = url.searchParams.get("method") ?? "all";
+  const search = url.searchParams.get("q")?.trim() ?? "";
 
-  const createdAtRange = getPeriodRange(period);
+  const createdAtRange = getPeriodRange(period, competence);
 
   const where: Prisma.PaymentWhereInput = {
-    ...(createdAtRange
+    ...(createdAtRange ? { createdAt: createdAtRange } : {}),
+    ...(status !== "all" ? { status: status as PaymentStatus } : {}),
+    ...(doctorId !== "all" ? { doctorId } : {}),
+    ...(method !== "all" ? { method: method as PaymentMethod } : {}),
+    ...(search
       ? {
-          createdAt: createdAtRange,
+          OR: [
+            {
+              patient: {
+                user: {
+                  name: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+            {
+              patient: {
+                user: {
+                  email: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+            {
+              doctor: {
+                user: {
+                  name: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+            {
+              doctor: {
+                user: {
+                  email: {
+                    contains: search,
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+            {
+              id: {
+                contains: search,
+                mode: "insensitive",
+              },
+            },
+            {
+              gatewayPaymentId: {
+                contains: search,
+                mode: "insensitive",
+              },
+            },
+          ],
         }
       : {}),
-    ...(status !== "all"
-      ? {
-          status: status as PaymentStatus,
-        }
-      : {}),
-    ...(doctorId !== "all"
-      ? {
-          doctorId,
-        }
-      : {}),
-    ...(method !== "all"
-  ? {
-      method: method as PaymentMethod,
-    }
-  : {}),
   };
 
   const payments = await prisma.payment.findMany({
@@ -171,7 +239,7 @@ export async function GET(request: Request) {
 
   const now = new Date();
 
-  const fileName = `financeiro-cannadoctor-${period}-${status}-${method}-${now
+  const fileName = `financeiro-cannadoctor-${period}-${competence}-${status}-${method}-${now
     .toISOString()
     .slice(0, 10)}.csv`;
 
