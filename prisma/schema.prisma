@@ -183,6 +183,9 @@ model Payment {
   externalId  String?
   externalUrl String?
 
+  payoutId String?
+  payout   DoctorPayout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -193,6 +196,7 @@ model Payment {
   @@index([gateway])
   @@index([gatewayPaymentId])
   @@index([gatewayCustomerId])
+  @@index([payoutId])
 }
 
 model Document {
@@ -341,6 +345,8 @@ model DoctorPayout {
   endDate   DateTime
 
   notes String?
+
+  payments Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

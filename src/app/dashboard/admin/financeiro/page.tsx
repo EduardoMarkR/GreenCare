@@ -394,7 +394,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </Link>
 
             <Link
-              href="/dashboard/admin/repasses"
+              href="/dashboard/admin/financeiro/repasses"
               className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
             >
               Gerenciar repasses
@@ -801,7 +801,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                   </div>
 
                   <Link
-                    href="/dashboard/admin/repasses"
+                    href="/dashboard/admin/financeiro/repasses"
                     className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
                   >
                     Ver repasses

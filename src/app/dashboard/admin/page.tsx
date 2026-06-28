@@ -232,7 +232,7 @@ export default async function DashboardAdminPage() {
     {
       title: "Repasses",
       description: "Registrar e acompanhar pagamentos médicos.",
-      href: "/dashboard/admin/repasses",
+      href: "/dashboard/admin/financeiro/repasses",
       icon: "🏦",
       style: "bg-white text-[#08553F]",
     },
@@ -344,7 +344,7 @@ export default async function DashboardAdminPage() {
       title: "Repasses",
       value: formatCurrency(totalPayoutAmountValue),
       helper: `${totalPayouts} repasse(s) registrado(s)`,
-      href: "/dashboard/admin/repasses",
+      href: "/dashboard/admin/financeiro/repasses",
       icon: "🏦",
       gradient: "from-teal-400 to-teal-700",
     },
