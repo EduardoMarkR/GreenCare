@@ -11,6 +11,7 @@ import FinanceCharts from "./FinanceCharts";
 type Props = {
   searchParams?: Promise<{
     period?: string;
+    competence?: string;
     status?: string;
   }>;
 };
@@ -26,6 +27,29 @@ function formatShortDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function getCurrentCompetence() {
+  const now = new Date();
+
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function getCompetenceLabel(competence: string) {
+  const [year, month] = competence.split("-").map(Number);
+
+  if (!year || !month) return "Competência inválida";
+
+  const date = new Date(Date.UTC(year, month - 1, 1));
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
     timeZone: "UTC",
   }).format(date);
 }
@@ -51,8 +75,22 @@ function getMethodLabel(method?: string | null) {
   return "Não informado";
 }
 
-function getPeriodRange(period: string) {
+function getPeriodRange(period: string, competence: string) {
   const now = new Date();
+
+  if (period === "competence") {
+    const [year, month] = competence.split("-").map(Number);
+
+    if (!year || !month) return undefined;
+
+    const startOfCompetence = new Date(Date.UTC(year, month - 1, 1));
+    const startOfNextCompetence = new Date(Date.UTC(year, month, 1));
+
+    return {
+      gte: startOfCompetence,
+      lt: startOfNextCompetence,
+    };
+  }
 
   if (period === "7d") {
     const start = new Date(now);
@@ -111,28 +149,18 @@ export default async function AdminFinanceiroGraficosPage({
   const userId = cookieStore.get("userId")?.value;
   const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId) {
-    redirect("/login");
-  }
-
-  if (activeProfile !== "ADMIN") {
-    redirect("/");
-  }
+  if (!userId) redirect("/login");
+  if (activeProfile !== "ADMIN") redirect("/");
 
   const selectedPeriod = params?.period ?? "30d";
+  const selectedCompetence = params?.competence ?? getCurrentCompetence();
   const selectedStatus = params?.status ?? "all";
-  const createdAtRange = getPeriodRange(selectedPeriod);
+  const createdAtRange = getPeriodRange(selectedPeriod, selectedCompetence);
 
   const where: Prisma.PaymentWhereInput = {
-    ...(createdAtRange
-      ? {
-          createdAt: createdAtRange,
-        }
-      : {}),
+    ...(createdAtRange ? { createdAt: createdAtRange } : {}),
     ...(selectedStatus !== "all"
-      ? {
-          status: selectedStatus as PaymentStatus,
-        }
+      ? { status: selectedStatus as PaymentStatus }
       : {}),
   };
 
@@ -166,8 +194,10 @@ export default async function AdminFinanceiroGraficosPage({
   );
 
   const paidPayments = payments.filter((payment) => payment.status === "PAID");
+
   const conversionRate =
     payments.length > 0 ? (paidPayments.length / payments.length) * 100 : 0;
+
   const averageTicket =
     paidPayments.length > 0
       ? paidPayments.reduce((sum, payment) => sum + Number(payment.amount), 0) /
@@ -238,17 +268,33 @@ export default async function AdminFinanceiroGraficosPage({
   });
 
   const dailyRevenue = Array.from(dailyMap.values());
+
   const statusData = Array.from(statusMap.entries()).map(([name, value]) => ({
     name,
     value,
   }));
+
   const methodData = Array.from(methodMap.entries()).map(([name, value]) => ({
     name,
     value,
   }));
+
   const doctorRevenue = Array.from(doctorMap.values())
     .sort((a, b) => b.receita - a.receita)
     .slice(0, 10);
+
+  const activePeriodLabel =
+    selectedPeriod === "competence"
+      ? `Competência: ${getCompetenceLabel(selectedCompetence)}`
+      : selectedPeriod === "7d"
+        ? "Últimos 7 dias"
+        : selectedPeriod === "30d"
+          ? "Últimos 30 dias"
+          : selectedPeriod === "90d"
+            ? "Últimos 90 dias"
+            : selectedPeriod === "all"
+              ? "Todo o período"
+              : "Mês atual";
 
   return (
     <>
@@ -280,69 +326,95 @@ export default async function AdminFinanceiroGraficosPage({
 
           <form
             action="/dashboard/admin/financeiro/graficos"
-            className="mb-8 grid gap-4 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm md:grid-cols-3"
+            className="mb-8 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm"
           >
-            <div>
-              <label
-                htmlFor="period"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Período
-              </label>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="period"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Período
+                </label>
 
-              <select
-                id="period"
-                name="period"
-                defaultValue={selectedPeriod}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="month">Mês atual</option>
-                <option value="7d">Últimos 7 dias</option>
-                <option value="30d">Últimos 30 dias</option>
-                <option value="90d">Últimos 90 dias</option>
-                <option value="all">Todo o período</option>
-              </select>
+                <select
+                  id="period"
+                  name="period"
+                  defaultValue={selectedPeriod}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="month">Mês atual</option>
+                  <option value="competence">Competência</option>
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="90d">Últimos 90 dias</option>
+                  <option value="all">Todo o período</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="competence"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Competência
+                </label>
+
+                <input
+                  id="competence"
+                  type="month"
+                  name="competence"
+                  defaultValue={selectedCompetence}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="status"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Status
+                </label>
+
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue={selectedStatus}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                >
+                  <option value="all">Todos</option>
+                  <option value="PAID">Pagos</option>
+                  <option value="PENDING">Pendentes</option>
+                  <option value="CANCELLED">Cancelados</option>
+                  <option value="FAILED">Falhos</option>
+                  <option value="REFUNDED">Reembolsados</option>
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="status"
-                className="text-sm font-bold text-[#08553F]"
-              >
-                Status
-              </label>
-
-              <select
-                id="status"
-                name="status"
-                defaultValue={selectedStatus}
-                className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
-              >
-                <option value="all">Todos</option>
-                <option value="PAID">Pagos</option>
-                <option value="PENDING">Pendentes</option>
-                <option value="CANCELLED">Cancelados</option>
-                <option value="FAILED">Falhos</option>
-                <option value="REFUNDED">Reembolsados</option>
-              </select>
-            </div>
-
-            <div className="flex items-end gap-3">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="submit"
-                className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                className="rounded-2xl bg-[#08553F] px-6 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F] sm:min-w-48"
               >
                 Atualizar gráficos
               </button>
 
               <Link
                 href="/dashboard/admin/financeiro/graficos"
-                className="rounded-2xl border border-[#08553F]/30 px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                className="rounded-2xl border border-[#08553F]/30 px-6 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7] sm:min-w-36"
               >
                 Limpar
               </Link>
             </div>
           </form>
+
+          <div className="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold text-[#08553F]">
+              Filtro ativo: {activePeriodLabel}
+            </p>
+          </div>
 
           <div className="mb-8 grid gap-6 md:grid-cols-5">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
