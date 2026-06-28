@@ -30,3 +30,43 @@ export type PaymentChargeResult = {
   pixQrCode?: string | null;
   pixCopyPaste?: string | null;
 };
+
+export type CreditCardHolderInfo = {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  postalCode?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  phone?: string | null;
+  mobilePhone?: string | null;
+};
+
+export type CreditCardData = {
+  holderName: string;
+  number: string;
+  expiryMonth: string;
+  expiryYear: string;
+  ccv: string;
+};
+
+export type PayCreditCardInput = {
+  gatewayPaymentId: string;
+  creditCard: CreditCardData;
+  creditCardHolderInfo: CreditCardHolderInfo;
+  installmentCount?: number;
+  totalValue?: number;
+};
+
+export type PayCreditCardResult = {
+  id: string;
+  status: string;
+  invoiceUrl?: string | null;
+};
+
+export type PaymentStatusResult = {
+  id: string;
+  status: string;
+  invoiceUrl?: string | null;
+  bankSlipUrl?: string | null;
+};

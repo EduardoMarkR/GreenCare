@@ -23,16 +23,27 @@ function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
-async function handleConfirmedPayment(event: AsaasWebhookEvent) {
+async function findPaymentByAsaasEvent(event: AsaasWebhookEvent) {
   const gatewayPaymentId = event.payment?.id;
+  const externalReference = event.payment?.externalReference;
 
-  if (!gatewayPaymentId) {
-    return;
+  if (!gatewayPaymentId && !externalReference) {
+    return null;
   }
 
-  const payment = await prisma.payment.findFirst({
+  return prisma.payment.findFirst({
     where: {
-      gatewayPaymentId,
+      OR: [
+        {
+          gatewayPaymentId: gatewayPaymentId ?? "",
+        },
+        {
+          externalId: gatewayPaymentId ?? "",
+        },
+        {
+          id: externalReference ?? "",
+        },
+      ],
     },
     include: {
       appointment: {
@@ -62,9 +73,23 @@ async function handleConfirmedPayment(event: AsaasWebhookEvent) {
       },
     },
   });
+}
+
+async function handleConfirmedPayment(event: AsaasWebhookEvent) {
+  const gatewayPaymentId = event.payment?.id;
+
+  if (!gatewayPaymentId) {
+    return;
+  }
+
+  const payment = await findPaymentByAsaasEvent(event);
 
   if (!payment) {
-    console.warn("Webhook Asaas: pagamento não encontrado", gatewayPaymentId);
+    console.warn("Webhook Asaas: pagamento não encontrado", {
+      gatewayPaymentId,
+      externalReference: event.payment?.externalReference,
+    });
+
     return;
   }
 
@@ -81,6 +106,11 @@ async function handleConfirmedPayment(event: AsaasWebhookEvent) {
       paidAt: event.payment?.paymentDate
         ? new Date(event.payment.paymentDate)
         : new Date(),
+      gatewayPaymentId,
+      externalId: gatewayPaymentId,
+      invoiceUrl: event.payment?.invoiceUrl ?? payment.invoiceUrl,
+      boletoUrl: event.payment?.bankSlipUrl ?? payment.boletoUrl,
+      externalUrl: event.payment?.invoiceUrl ?? payment.externalUrl,
       webhookPayload: event,
     },
   });
@@ -175,14 +205,14 @@ async function handleCancelledPayment(event: AsaasWebhookEvent) {
     return;
   }
 
-  const payment = await prisma.payment.findFirst({
-    where: {
-      gatewayPaymentId,
-    },
-  });
+  const payment = await findPaymentByAsaasEvent(event);
 
   if (!payment) {
-    console.warn("Webhook Asaas: pagamento cancelado não encontrado", gatewayPaymentId);
+    console.warn("Webhook Asaas: pagamento cancelado não encontrado", {
+      gatewayPaymentId,
+      externalReference: event.payment?.externalReference,
+    });
+
     return;
   }
 
@@ -197,7 +227,18 @@ async function handleCancelledPayment(event: AsaasWebhookEvent) {
     data: {
       status: PaymentStatus.CANCELLED,
       cancelledAt: new Date(),
+      gatewayPaymentId,
+      externalId: gatewayPaymentId,
       webhookPayload: event,
+    },
+  });
+
+  await prisma.appointment.update({
+    where: {
+      id: payment.appointmentId,
+    },
+    data: {
+      status: AppointmentStatus.CANCELLED,
     },
   });
 
@@ -206,7 +247,7 @@ async function handleCancelledPayment(event: AsaasWebhookEvent) {
       action: "PAYMENT_CANCELLED_BY_ASAAS_WEBHOOK",
       entity: "Payment",
       entityId: payment.id,
-      details: `Pagamento cancelado via webhook Asaas.`,
+      details: "Pagamento cancelado via webhook Asaas.",
     },
   });
 }

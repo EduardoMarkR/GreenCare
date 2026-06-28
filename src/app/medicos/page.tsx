@@ -11,13 +11,23 @@ type MedicosPageProps = {
   }>;
 };
 
+function getTodayUtc() {
+  const now = new Date();
+
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+}
+
 export default async function MedicosPage({ searchParams }: MedicosPageProps) {
   const params = await searchParams;
   const busca = params?.busca?.trim();
+  const today = getTodayUtc();
 
   const doctors = await prisma.doctor.findMany({
     where: {
       approved: true,
+      approvalStatus: "APPROVED",
       ...(busca
         ? {
             OR: [
@@ -53,52 +63,43 @@ export default async function MedicosPage({ searchParams }: MedicosPageProps) {
     },
   });
 
+  const doctorIds = doctors.map((doctor) => doctor.id);
+
   const totalApprovedDoctors = await prisma.doctor.count({
     where: {
       approved: true,
+      approvalStatus: "APPROVED",
     },
   });
 
   const telemedicineDoctors = await prisma.doctor.count({
     where: {
       approved: true,
+      approvalStatus: "APPROVED",
       telemedicine: true,
     },
   });
 
-  const activeAppointments = await prisma.appointment.findMany({
-    where: {
-      status: {
-        in: ["PENDING", "CONFIRMED", "COMPLETED"],
-      },
-      availabilityId: {
-        not: null,
-      },
-      doctor: {
-        approved: true,
-      },
-    },
-    select: {
-      availabilityId: true,
-    },
-  });
-
-  const unavailableAvailabilityIds = activeAppointments
-    .map((appointment) => appointment.availabilityId)
-    .filter((availabilityId): availabilityId is string =>
-      Boolean(availabilityId)
-    );
-
-  const totalAvailabilities = await prisma.availability.count({
-    where: {
-      doctor: {
-        approved: true,
-      },
-      id: {
-        notIn: unavailableAvailabilityIds,
-      },
-    },
-  });
+  const totalAvailabilities =
+    doctorIds.length > 0
+      ? await prisma.availability.count({
+          where: {
+            doctorId: {
+              in: doctorIds,
+            },
+            date: {
+              gte: today,
+            },
+            appointments: {
+              none: {
+                status: {
+                  in: ["PENDING", "CONFIRMED", "COMPLETED"],
+                },
+              },
+            },
+          },
+        })
+      : 0;
 
   return (
     <>

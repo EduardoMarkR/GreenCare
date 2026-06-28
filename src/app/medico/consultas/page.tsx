@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/generated/prisma";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
@@ -129,8 +130,13 @@ export default async function ConsultasMedicoPage({
     redirect("/");
   }
 
-  const appointmentWhere = {
+  const appointmentWhere: Prisma.AppointmentWhereInput = {
     doctorId: doctor.id,
+    payment: {
+      is: {
+        status: "PAID",
+      },
+    },
     status:
       statusFilter !== "ALL"
         ? (statusFilter as ActiveAppointmentStatus)
@@ -207,6 +213,11 @@ export default async function ConsultasMedicoPage({
     prisma.appointment.count({
       where: {
         doctorId: doctor.id,
+        payment: {
+          is: {
+            status: "PAID",
+          },
+        },
         status: {
           in: ["PENDING", "CONFIRMED"],
         },
@@ -215,12 +226,22 @@ export default async function ConsultasMedicoPage({
     prisma.appointment.count({
       where: {
         doctorId: doctor.id,
+        payment: {
+          is: {
+            status: "PAID",
+          },
+        },
         status: "PENDING",
       },
     }),
     prisma.appointment.count({
       where: {
         doctorId: doctor.id,
+        payment: {
+          is: {
+            status: "PAID",
+          },
+        },
         status: "CONFIRMED",
       },
     }),

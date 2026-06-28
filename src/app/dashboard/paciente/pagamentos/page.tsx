@@ -1,10 +1,23 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { AppointmentStatus, PaymentStatus } from "@/generated/prisma";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
 import { prisma } from "@/lib/prisma";
+import { asaasRequest } from "@/lib/payments/asaas";
+import { createGoogleMeetEvent } from "@/lib/google-meet";
+
+type AsaasPaymentResponse = {
+  id: string;
+  status: string;
+  invoiceUrl?: string | null;
+  bankSlipUrl?: string | null;
+  paymentDate?: string | null;
+  clientPaymentDate?: string | null;
+  confirmedDate?: string | null;
+};
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -17,6 +30,24 @@ function formatCurrency(value: number) {
     style: "currency",
     currency: "BRL",
   }).format(value);
+}
+
+function isAsaasPaymentPaid(status?: string | null) {
+  return (
+    status === "RECEIVED" ||
+    status === "CONFIRMED" ||
+    status === "RECEIVED_IN_CASH"
+  );
+}
+
+function getAsaasPaidAt(asaasPayment: AsaasPaymentResponse) {
+  if (asaasPayment.paymentDate) return new Date(asaasPayment.paymentDate);
+  if (asaasPayment.clientPaymentDate) {
+    return new Date(asaasPayment.clientPaymentDate);
+  }
+  if (asaasPayment.confirmedDate) return new Date(asaasPayment.confirmedDate);
+
+  return new Date();
 }
 
 function getPaymentStatusLabel(status: string) {
@@ -48,6 +79,135 @@ function getAppointmentStatusLabel(status: string) {
   return status;
 }
 
+async function ensureGoogleMeetForAppointment(appointmentId: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: {
+      id: appointmentId,
+    },
+    select: {
+      id: true,
+      meetingUrl: true,
+      googleEventId: true,
+    },
+  });
+
+  if (!appointment || appointment.meetingUrl) {
+    return;
+  }
+
+  try {
+    await createGoogleMeetEvent({
+      appointmentId: appointment.id,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "GOOGLE_MEET_CREATED_BY_PAYMENT_LIST_SYNC",
+        entity: "Appointment",
+        entityId: appointment.id,
+        details:
+          "Google Meet criado automaticamente após sincronização do pagamento aprovado.",
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao criar Google Meet após sincronizar pagamento:",
+      error
+    );
+
+    await prisma.auditLog.create({
+      data: {
+        action: "GOOGLE_MEET_CREATION_FAILED_BY_PAYMENT_LIST_SYNC",
+        entity: "Appointment",
+        entityId: appointment.id,
+        details:
+          "Falha ao criar Google Meet automaticamente após sincronização do pagamento aprovado.",
+      },
+    });
+  }
+}
+
+async function syncPendingPaymentWithAsaas(payment: {
+  id: string;
+  gatewayPaymentId: string | null;
+  status: PaymentStatus;
+  appointmentId: string;
+  invoiceUrl: string | null;
+  boletoUrl: string | null;
+  externalUrl: string | null;
+}) {
+  if (payment.status === PaymentStatus.PAID || !payment.gatewayPaymentId) {
+    return;
+  }
+
+  try {
+    const asaasPayment = await asaasRequest<AsaasPaymentResponse>(
+      `/payments/${payment.gatewayPaymentId}`
+    );
+
+    if (!isAsaasPaymentPaid(asaasPayment.status)) {
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: {
+          id: payment.id,
+        },
+        data: {
+          status: PaymentStatus.PAID,
+          paidAt: getAsaasPaidAt(asaasPayment),
+          gatewayPaymentId: asaasPayment.id,
+          externalId: asaasPayment.id,
+          invoiceUrl: asaasPayment.invoiceUrl ?? payment.invoiceUrl,
+          boletoUrl: asaasPayment.bankSlipUrl ?? payment.boletoUrl,
+          externalUrl: asaasPayment.invoiceUrl ?? payment.externalUrl,
+        },
+      });
+
+      await tx.appointment.update({
+        where: {
+          id: payment.appointmentId,
+        },
+        data: {
+          status: AppointmentStatus.CONFIRMED,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "PAYMENT_APPROVED_BY_PAYMENT_LIST_SYNC",
+          entity: "Payment",
+          entityId: payment.id,
+          details:
+            "Pagamento sincronizado como aprovado ao carregar a lista financeira do paciente.",
+        },
+      });
+    });
+
+    await ensureGoogleMeetForAppointment(payment.appointmentId);
+  } catch (error) {
+    console.error("Erro ao sincronizar pagamento pendente com Asaas:", error);
+  }
+}
+
+async function syncConfirmedAppointmentWithoutMeet(payment: {
+  status: PaymentStatus;
+  appointmentId: string;
+  appointmentStatus: AppointmentStatus;
+  meetingUrl: string | null;
+}) {
+  if (
+    payment.status !== PaymentStatus.PAID ||
+    payment.appointmentStatus !== AppointmentStatus.CONFIRMED ||
+    payment.meetingUrl
+  ) {
+    return;
+  }
+
+  await ensureGoogleMeetForAppointment(payment.appointmentId);
+}
+
 export default async function PagamentosPacientePage() {
   const cookieStore = await cookies();
 
@@ -63,13 +223,63 @@ export default async function PagamentosPacientePage() {
   }
 
   const patient = await prisma.patient.findUnique({
-    where: { userId },
-    include: { user: true },
+    where: {
+      userId,
+    },
+    include: {
+      user: true,
+    },
   });
 
   if (!patient) {
     redirect("/login");
   }
+
+  const initialPayments = await prisma.payment.findMany({
+    where: {
+      patientId: patient.id,
+    },
+    include: {
+      appointment: {
+        include: {
+          availability: true,
+        },
+      },
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  await Promise.all(
+    initialPayments.map(async (payment) => {
+      if (payment.status === PaymentStatus.PENDING) {
+        await syncPendingPaymentWithAsaas({
+          id: payment.id,
+          gatewayPaymentId: payment.gatewayPaymentId,
+          status: payment.status,
+          appointmentId: payment.appointmentId,
+          invoiceUrl: payment.invoiceUrl,
+          boletoUrl: payment.boletoUrl,
+          externalUrl: payment.externalUrl,
+        });
+
+        return;
+      }
+
+      await syncConfirmedAppointmentWithoutMeet({
+        status: payment.status,
+        appointmentId: payment.appointmentId,
+        appointmentStatus: payment.appointment.status,
+        meetingUrl: payment.appointment.meetingUrl,
+      });
+    })
+  );
 
   const payments = await prisma.payment.findMany({
     where: {
@@ -93,13 +303,15 @@ export default async function PagamentosPacientePage() {
   });
 
   const pendingPayments = payments.filter(
-    (payment) => payment.status === "PENDING"
+    (payment) => payment.status === PaymentStatus.PENDING
   );
 
-  const paidPayments = payments.filter((payment) => payment.status === "PAID");
+  const paidPayments = payments.filter(
+    (payment) => payment.status === PaymentStatus.PAID
+  );
 
   const cancelledPayments = payments.filter(
-    (payment) => payment.status === "CANCELLED"
+    (payment) => payment.status === PaymentStatus.CANCELLED
   );
 
   const totalPending = pendingPayments.reduce(
@@ -156,9 +368,7 @@ export default async function PagamentosPacientePage() {
             </div>
 
             <div className="rounded-[2rem] bg-[#08553F] p-6 shadow-sm">
-              <p className="text-sm font-semibold text-white/70">
-                Total pago
-              </p>
+              <p className="text-sm font-semibold text-white/70">Total pago</p>
 
               <p className="mt-3 text-4xl font-extrabold text-white">
                 {formatCurrency(totalPaid)}
@@ -252,6 +462,16 @@ export default async function PagamentosPacientePage() {
                             Pago em: {formatDate(payment.paidAt)}
                           </p>
                         ) : null}
+
+                        {payment.appointment.meetingUrl ? (
+                          <Link
+                            href={payment.appointment.meetingUrl}
+                            target="_blank"
+                            className="mt-4 inline-flex rounded-2xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                          >
+                            Acessar Google Meet
+                          </Link>
+                        ) : null}
                       </div>
 
                       <div className="text-left md:text-right">
@@ -263,19 +483,26 @@ export default async function PagamentosPacientePage() {
                           {formatCurrency(Number(payment.amount))}
                         </p>
 
-                        {payment.status === "PENDING" ? (
+                        {payment.status === PaymentStatus.PENDING ? (
                           <div className="mt-4 rounded-2xl bg-[#F3EFA1] p-4 text-sm font-bold text-[#08553F]">
                             Pagamento aguardando aprovação.
                           </div>
                         ) : null}
 
-                        {payment.status === "PAID" ? (
+                        {payment.status === PaymentStatus.PAID ? (
                           <div className="mt-4 rounded-2xl bg-[#00CF7B]/15 p-4 text-sm font-bold text-[#08553F]">
                             Pagamento confirmado.
                           </div>
                         ) : null}
 
-                        {payment.status === "CANCELLED" ? (
+                        {payment.status === PaymentStatus.PAID &&
+                        !payment.appointment.meetingUrl ? (
+                          <div className="mt-3 rounded-2xl bg-white p-4 text-sm font-bold text-[#878787]">
+                            Link do Google Meet em processamento.
+                          </div>
+                        ) : null}
+
+                        {payment.status === PaymentStatus.CANCELLED ? (
                           <div className="mt-4 rounded-2xl bg-white p-4 text-sm font-bold text-[#878787]">
                             Pagamento cancelado.
                           </div>

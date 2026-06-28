@@ -2,11 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  PaymentGateway,
-  PaymentMethod,
-  Prisma,
-} from "@/generated/prisma";
+import { PaymentGateway, PaymentMethod, Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { paymentProvider } from "@/lib/payments";
 
@@ -35,9 +31,20 @@ function onlyNumbers(value?: string | null) {
   return value?.replace(/\D/g, "") || null;
 }
 
+function getPaymentMethod(formData: FormData) {
+  const paymentMethod = String(formData.get("paymentMethod") ?? "PIX");
+
+  if (paymentMethod === "CREDIT_CARD") {
+    return PaymentMethod.CREDIT_CARD;
+  }
+
+  return PaymentMethod.PIX;
+}
+
 export async function createAppointment(formData: FormData) {
   const availabilityId = String(formData.get("availabilityId") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
+  const selectedPaymentMethod = getPaymentMethod(formData);
 
   const cookieStore = await cookies();
 
@@ -160,7 +167,7 @@ export async function createAppointment(formData: FormData) {
         doctorAmount: paymentAmounts.doctorAmount,
         commissionRate: paymentAmounts.commissionRate,
         status: "PENDING",
-        method: PaymentMethod.PIX,
+        method: selectedPaymentMethod,
         gateway: PaymentGateway.ASAAS,
       },
     });
@@ -200,7 +207,7 @@ export async function createAppointment(formData: FormData) {
       dueDate: formatAsaasDueDate(availability.date),
       description: `Consulta com ${availability.doctor.user.name} - CannaDoctor`,
       externalReference: result.payment.id,
-      method: PaymentMethod.PIX,
+      method: selectedPaymentMethod,
     });
 
     await prisma.payment.update({
