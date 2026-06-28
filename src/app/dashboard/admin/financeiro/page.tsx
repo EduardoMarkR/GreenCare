@@ -385,54 +385,93 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
             </div>
           ) : null}
 
-          <div className="mb-8 grid gap-3 xl:grid-cols-[repeat(6,max-content)]">
-            <Link
-              href="/dashboard/admin"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Voltar ao painel admin
-            </Link>
+          <div className="mb-8 grid gap-6 lg:grid-cols-3">
 
-            <Link
-              href="/dashboard/admin/financeiro/repasses"
-              className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Gerenciar repasses
-            </Link>
+          <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-extrabold text-[#08553F]">
+              Gestão financeira
+            </h2>
 
-            <Link
-              href="/dashboard/admin/consultas"
-              className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white shadow-sm transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-            >
-              Gerenciar consultas
-            </Link>
+    <div className="mt-5 grid gap-3">
+      <Link
+        href="/dashboard/admin/financeiro/extrato"
+        className="rounded-2xl bg-[#08553F] px-5 py-3 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+      >
+        Extrato financeiro
+      </Link>
 
-            <Link
-              href="/dashboard/admin/medicos"
-              className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#F3EFA1]"
-            >
-              Ver médicos
-            </Link>
+      <Link
+        href="/dashboard/admin/financeiro/graficos"
+        className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#00CF7B]"
+      >
+        Gráficos financeiros
+      </Link>
 
-            <Link
-              href="/dashboard/admin/financeiro/extrato"
-              className="rounded-2xl bg-white px-5 py-3 text-center font-bold text-[#08553F] shadow-sm ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
-            >
-              Extrato financeiro
-            </Link>
+      <Link
+        href={getExportHref(
+          selectedPeriod,
+          selectedStatus,
+          selectedDoctorId,
+          selectedMethod
+        )}
+        className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+      >
+        Exportar CSV filtrado
+      </Link>
+    </div>
+  </div>
 
-            <Link
-              href={getExportHref(
-                selectedPeriod,
-                selectedStatus,
-                selectedDoctorId,
-                selectedMethod
-              )}
-              className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
-            >
-              Exportar CSV filtrado
-            </Link>
-          </div>
+      <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-extrabold text-[#08553F]">
+          Operações
+        </h2>
+
+        <div className="mt-5 grid gap-3">
+          <Link
+            href="/dashboard/admin/financeiro/repasses"
+            className="rounded-2xl bg-[#00CF7B] px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+          >
+            Repasses médicos
+          </Link>
+
+          <Link
+            href="/dashboard/admin/financeiro/conciliacao"
+            className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-center font-bold text-red-700 transition hover:bg-red-100"
+          >
+            Central de conciliação
+          </Link>
+
+          <Link
+            href="/dashboard/admin/consultas"
+            className="rounded-2xl border border-[#08553F]/30 bg-white px-5 py-3 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+          >
+            Gerenciar consultas
+          </Link>
+        </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-extrabold text-[#08553F]">
+          Administração
+        </h2>
+
+        <div className="mt-5 grid gap-3">
+          <Link
+            href="/dashboard/admin"
+            className="rounded-2xl bg-white px-5 py-3 text-center font-bold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
+          >
+            Voltar ao painel admin
+          </Link>
+
+          <Link
+            href="/dashboard/admin/medicos"
+            className="rounded-2xl bg-white px-5 py-3 text-center font-bold text-[#08553F] ring-1 ring-[#08553F]/20 transition hover:bg-[#F3EFA1]"
+          >
+            Ver médicos
+          </Link>
+        </div>
+      </div>
+    </div>
 
           <form
             action="/dashboard/admin/financeiro"
