@@ -12,6 +12,7 @@ type AdminRepassesPageProps = {
   searchParams?: Promise<{
     success?: string;
     erro?: string;
+    competence?: string;
     previewDoctorId?: string;
     previewStartDate?: string;
     previewEndDate?: string;
@@ -29,6 +30,64 @@ function formatCurrency(value: number) {
     style: "currency",
     currency: "BRL",
   }).format(value);
+}
+
+function getCurrentCompetence() {
+  const now = new Date();
+
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function getCompetenceRange(competence: string) {
+  const [year, month] = competence.split("-").map(Number);
+
+  if (!year || !month) {
+    const fallback = getCurrentCompetence();
+    const [fallbackYear, fallbackMonth] = fallback.split("-").map(Number);
+
+    return {
+      startDate: new Date(Date.UTC(fallbackYear, fallbackMonth - 1, 1)),
+      endDate: new Date(Date.UTC(fallbackYear, fallbackMonth, 0)),
+      startInput: `${fallbackYear}-${String(fallbackMonth).padStart(
+        2,
+        "0"
+      )}-01`,
+      endInput: `${fallbackYear}-${String(fallbackMonth).padStart(2, "0")}-${String(
+        new Date(Date.UTC(fallbackYear, fallbackMonth, 0)).getUTCDate()
+      ).padStart(2, "0")}`,
+    };
+  }
+
+  const startDate = new Date(Date.UTC(year, month - 1, 1));
+  const endDate = new Date(Date.UTC(year, month, 0));
+  const monthValue = String(month).padStart(2, "0");
+
+  return {
+    startDate,
+    endDate,
+    startInput: `${year}-${monthValue}-01`,
+    endInput: `${year}-${monthValue}-${String(endDate.getUTCDate()).padStart(
+      2,
+      "0"
+    )}`,
+  };
+}
+
+function getCompetenceLabel(competence: string) {
+  const [year, month] = competence.split("-").map(Number);
+
+  if (!year || !month) return "Competência inválida";
+
+  const date = new Date(Date.UTC(year, month - 1, 1));
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function getSuccessMessage(success?: string) {
@@ -83,9 +142,11 @@ export default async function AdminRepassesPage({
   const successMessage = getSuccessMessage(params?.success);
   const errorMessage = getErrorMessage(params?.erro);
 
+  const selectedCompetence = params?.competence ?? getCurrentCompetence();
+  const competenceRange = getCompetenceRange(selectedCompetence);
   const previewDoctorId = params?.previewDoctorId ?? "";
-  const previewStartDate = params?.previewStartDate ?? "";
-  const previewEndDate = params?.previewEndDate ?? "";
+  const previewStartDate = params?.previewStartDate ?? competenceRange.startInput;
+  const previewEndDate = params?.previewEndDate ?? competenceRange.endInput;
 
   const hasPreview = Boolean(
     previewDoctorId && previewStartDate && previewEndDate
@@ -317,6 +378,56 @@ export default async function AdminRepassesPage({
             </Link>
           </div>
 
+          <div className="mb-8 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#00A86B]">
+                  Competência mensal
+                </p>
+
+                <h2 className="mt-2 text-2xl font-extrabold text-[#08553F]">
+                  {getCompetenceLabel(selectedCompetence)}
+                </h2>
+
+                <p className="mt-2 text-sm text-[#878787]">
+                  Use a competência para preencher rapidamente o período de
+                  fechamento dos repasses médicos.
+                </p>
+              </div>
+
+              <form
+                action="/dashboard/admin/financeiro/repasses"
+                className="grid gap-3 sm:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <label
+                    htmlFor="competence"
+                    className="text-sm font-bold text-[#08553F]"
+                  >
+                    Selecionar competência
+                  </label>
+
+                  <input
+                    id="competence"
+                    type="month"
+                    name="competence"
+                    defaultValue={selectedCompetence}
+                    className="mt-2 min-h-12 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 font-semibold text-[#08553F] outline-none transition focus:border-[#00CF7B] focus:bg-white"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-[#08553F] px-5 py-3 font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F] sm:w-auto"
+                  >
+                    Aplicar competência
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-[#878787]">
@@ -391,6 +502,23 @@ export default async function AdminRepassesPage({
                   action="/dashboard/admin/financeiro/repasses"
                   className="mt-6 space-y-4"
                 >
+                  <input
+                    type="hidden"
+                    name="competence"
+                    value={selectedCompetence}
+                  />
+
+                  <div className="rounded-2xl bg-[#F7F4E7] p-4">
+                    <p className="text-sm font-bold text-[#08553F]">
+                      Competência base: {getCompetenceLabel(selectedCompetence)}
+                    </p>
+
+                    <p className="mt-1 text-xs text-[#878787]">
+                      As datas abaixo já começam preenchidas com o primeiro e o
+                      último dia da competência selecionada.
+                    </p>
+                  </div>
+
                   <div>
                     <label className="text-sm font-bold text-[#08553F]">
                       Médico
@@ -509,6 +637,11 @@ export default async function AdminRepassesPage({
                         </div>
 
                         <form action={createDoctorPayout} className="mt-5">
+                          <input
+                            type="hidden"
+                            name="competence"
+                            value={selectedCompetence}
+                          />
                           <input
                             type="hidden"
                             name="doctorId"
@@ -663,6 +796,11 @@ export default async function AdminRepassesPage({
                 <h2 className="text-2xl font-extrabold text-[#08553F]">
                   Histórico de repasses
                 </h2>
+
+                <p className="mt-2 text-sm text-[#878787]">
+                  Últimos 20 repasses registrados, independentemente da
+                  competência selecionada.
+                </p>
 
                 <div className="mt-6 space-y-4">
                   {recentPayouts.length === 0 ? (
