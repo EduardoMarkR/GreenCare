@@ -13,6 +13,7 @@ type Props = {
     erro?: string;
     sucesso?: string;
     period?: string;
+    competence?: string;
     status?: string;
     doctorId?: string;
     method?: string;
@@ -34,6 +35,28 @@ function formatCurrency(value: number) {
 
 function formatPercent(value: number) {
   return `${value.toFixed(1).replace(".", ",")}%`;
+}
+
+function getCurrentCompetence() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function getCompetenceLabel(competence: string) {
+  const [year, month] = competence.split("-").map(Number);
+
+  if (!year || !month) return "Competência inválida";
+
+  const date = new Date(Date.UTC(year, month - 1, 1));
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
 }
 
 function getPaymentStatusLabel(status: string) {
@@ -67,8 +90,22 @@ function getMethodLabel(method?: string | null) {
   return "Não informado";
 }
 
-function getPeriodRange(period: string) {
+function getPeriodRange(period: string, competence: string) {
   const now = new Date();
+
+  if (period === "competence") {
+    const [year, month] = competence.split("-").map(Number);
+
+    if (!year || !month) return undefined;
+
+    const startOfCompetence = new Date(Date.UTC(year, month - 1, 1));
+    const startOfNextCompetence = new Date(Date.UTC(year, month, 1));
+
+    return {
+      gte: startOfCompetence,
+      lt: startOfNextCompetence,
+    };
+  }
 
   if (period === "7d") {
     const start = new Date(now);
@@ -100,15 +137,23 @@ function getPeriodRange(period: string) {
   };
 }
 
-function getExportHref(
-  period: string,
-  status: string,
-  doctorId: string,
-  method: string
-) {
+function getExportHref({
+  period,
+  competence,
+  status,
+  doctorId,
+  method,
+}: {
+  period: string;
+  competence: string;
+  status: string;
+  doctorId: string;
+  method: string;
+}) {
   const params = new URLSearchParams();
 
   params.set("period", period);
+  params.set("competence", competence);
   params.set("status", status);
   params.set("doctorId", doctorId);
   params.set("method", method);
@@ -212,7 +257,6 @@ function SectionCard({
     <section className="rounded-[2rem] bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-2xl font-extrabold text-[#08553F]">{title}</h2>
-
         {action}
       </div>
 
@@ -228,20 +272,16 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
   const userId = cookieStore.get("userId")?.value;
   const activeProfile = cookieStore.get("activeProfile")?.value;
 
-  if (!userId) {
-    redirect("/login");
-  }
-
-  if (activeProfile !== "ADMIN") {
-    redirect("/");
-  }
+  if (!userId) redirect("/login");
+  if (activeProfile !== "ADMIN") redirect("/");
 
   const selectedPeriod = params?.period ?? "month";
+  const selectedCompetence = params?.competence ?? getCurrentCompetence();
   const selectedStatus = params?.status ?? "all";
   const selectedDoctorId = params?.doctorId ?? "all";
   const selectedMethod = params?.method ?? "all";
 
-  const createdAtRange = getPeriodRange(selectedPeriod);
+  const createdAtRange = getPeriodRange(selectedPeriod, selectedCompetence);
 
   const where: Prisma.PaymentWhereInput = {
     ...(createdAtRange ? { createdAt: createdAtRange } : {}),
@@ -358,6 +398,17 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
   const totalConciliationAlerts =
     paidWithoutPayoutCount + paidWithoutMeetCount + payoutsWithoutPaymentsCount;
 
+  const activePeriodLabel =
+    selectedPeriod === "competence"
+      ? `Competência: ${getCompetenceLabel(selectedCompetence)}`
+      : selectedPeriod === "7d"
+        ? "Últimos 7 dias"
+        : selectedPeriod === "30d"
+          ? "Últimos 30 dias"
+          : selectedPeriod === "all"
+            ? "Todo o período"
+            : "Mês atual";
+
   return (
     <>
       <Navbar />
@@ -384,9 +435,15 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
 
           <div className="mb-8 rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-2xl font-extrabold text-[#08553F]">
-                Módulos financeiros
-              </h2>
+              <div>
+                <h2 className="text-2xl font-extrabold text-[#08553F]">
+                  Módulos financeiros
+                </h2>
+
+                <p className="mt-2 text-sm font-semibold text-[#878787]">
+                  Filtro ativo: {activePeriodLabel}
+                </p>
+              </div>
 
               <Link
                 href="/dashboard/admin"
@@ -427,12 +484,13 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               <ModuleCard
                 icon="📦"
                 title="Exportar CSV"
-                href={getExportHref(
-                  selectedPeriod,
-                  selectedStatus,
-                  selectedDoctorId,
-                  selectedMethod
-                )}
+                href={getExportHref({
+                  period: selectedPeriod,
+                  competence: selectedCompetence,
+                  status: selectedStatus,
+                  doctorId: selectedDoctorId,
+                  method: selectedMethod,
+                })}
               />
 
               <ModuleCard
@@ -460,7 +518,7 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
               </Link>
             </div>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-5">
+            <div className="mt-6 grid gap-4 lg:grid-cols-6">
               <div>
                 <label
                   htmlFor="period"
@@ -476,10 +534,28 @@ export default async function FinanceiroAdminPage({ searchParams }: Props) {
                   className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
                 >
                   <option value="month">Mês atual</option>
+                  <option value="competence">Competência</option>
                   <option value="7d">Últimos 7 dias</option>
                   <option value="30d">Últimos 30 dias</option>
                   <option value="all">Todo o período</option>
                 </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="competence"
+                  className="text-sm font-bold text-[#08553F]"
+                >
+                  Competência
+                </label>
+
+                <input
+                  id="competence"
+                  type="month"
+                  name="competence"
+                  defaultValue={selectedCompetence}
+                  className="mt-2 w-full rounded-2xl border border-[#C6C6C6]/70 bg-[#F7F4E7] px-4 py-3 font-semibold text-[#08553F] outline-none"
+                />
               </div>
 
               <div>
