@@ -56,9 +56,7 @@ export default async function AdminFinanceiroConciliacaoPage() {
       where: {
         status: "CONFIRMED",
         OR: [
-          {
-            payment: null,
-          },
+          { payment: null },
           {
             payment: {
               status: {
@@ -99,6 +97,7 @@ export default async function AdminFinanceiroConciliacaoPage() {
       include: {
         patient: { include: { user: true } },
         doctor: { include: { user: true } },
+        appointment: true,
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -111,6 +110,7 @@ export default async function AdminFinanceiroConciliacaoPage() {
       include: {
         patient: { include: { user: true } },
         doctor: { include: { user: true } },
+        appointment: true,
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -134,6 +134,7 @@ export default async function AdminFinanceiroConciliacaoPage() {
       include: {
         patient: { include: { user: true } },
         doctor: { include: { user: true } },
+        appointment: true,
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -213,9 +214,7 @@ export default async function AdminFinanceiroConciliacaoPage() {
             </div>
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-[#878787]">
-                Sem Meet
-              </p>
+              <p className="text-sm font-semibold text-[#878787]">Sem Meet</p>
               <p className="mt-3 text-5xl font-extrabold text-[#08553F]">
                 {paidWithoutMeet.length}
               </p>
@@ -241,11 +240,11 @@ export default async function AdminFinanceiroConciliacaoPage() {
                 <PaymentIssueCard
                   key={payment.id}
                   paymentId={payment.id}
+                  appointmentId={payment.appointmentId}
                   patientName={payment.patient.user.name}
                   doctorName={payment.doctor.user.name}
                   date={payment.createdAt}
                   amount={Number(payment.amount)}
-                  href={`/dashboard/admin/financeiro/${payment.id}`}
                 />
               ))}
             </IssueSection>
@@ -256,23 +255,15 @@ export default async function AdminFinanceiroConciliacaoPage() {
               count={confirmedWithoutPaidPayment.length}
             >
               {confirmedWithoutPaidPayment.map((appointment) => (
-                <div
+                <AppointmentIssueCard
                   key={appointment.id}
-                  className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
-                >
-                  <p className="font-extrabold text-[#08553F]">
-                    {appointment.patient.user.name}
-                  </p>
-                  <p className="mt-1 text-sm text-[#878787]">
-                    Médico: {appointment.doctor.user.name}
-                  </p>
-                  <p className="mt-1 text-sm text-[#878787]">
-                    Consulta: {formatDate(appointment.date)}
-                  </p>
-                  <p className="mt-2 text-sm font-bold text-[#08553F]">
-                    Pagamento: {appointment.payment?.status ?? "Não existe"}
-                  </p>
-                </div>
+                  appointmentId={appointment.id}
+                  paymentId={appointment.payment?.id ?? null}
+                  patientName={appointment.patient.user.name}
+                  doctorName={appointment.doctor.user.name}
+                  date={appointment.date}
+                  paymentStatus={appointment.payment?.status ?? "Não existe"}
+                />
               ))}
             </IssueSection>
 
@@ -285,11 +276,11 @@ export default async function AdminFinanceiroConciliacaoPage() {
                 <PaymentIssueCard
                   key={payment.id}
                   paymentId={payment.id}
+                  appointmentId={payment.appointmentId}
                   patientName={payment.patient.user.name}
                   doctorName={payment.doctor.user.name}
                   date={payment.createdAt}
                   amount={Number(payment.amount)}
-                  href={`/dashboard/admin/financeiro/${payment.id}`}
                 />
               ))}
             </IssueSection>
@@ -303,11 +294,11 @@ export default async function AdminFinanceiroConciliacaoPage() {
                 <PaymentIssueCard
                   key={payment.id}
                   paymentId={payment.id}
+                  appointmentId={payment.appointmentId}
                   patientName={payment.patient.user.name}
                   doctorName={payment.doctor.user.name}
                   date={payment.createdAt}
                   amount={Number(payment.amount)}
-                  href={`/dashboard/admin/financeiro/${payment.id}`}
                 />
               ))}
             </IssueSection>
@@ -321,11 +312,12 @@ export default async function AdminFinanceiroConciliacaoPage() {
                 <PaymentIssueCard
                   key={payment.id}
                   paymentId={payment.id}
+                  appointmentId={payment.appointmentId}
                   patientName={payment.patient.user.name}
                   doctorName={payment.doctor.user.name}
                   date={payment.createdAt}
                   amount={Number(payment.doctorAmount)}
-                  href={`/dashboard/admin/financeiro/${payment.id}`}
+                  highlightLabel="Valor médico"
                 />
               ))}
             </IssueSection>
@@ -336,27 +328,13 @@ export default async function AdminFinanceiroConciliacaoPage() {
               count={payoutsWithoutPayments.length}
             >
               {payoutsWithoutPayments.map((payout) => (
-                <div
+                <PayoutIssueCard
                   key={payout.id}
-                  className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5"
-                >
-                  <p className="font-extrabold text-[#08553F]">
-                    {payout.doctor.user.name}
-                  </p>
-                  <p className="mt-1 text-sm text-[#878787]">
-                    Repasse: {payout.id}
-                  </p>
-                  <p className="mt-1 text-sm text-[#878787]">
-                    Valor: {formatCurrency(Number(payout.amount))}
-                  </p>
-
-                  <Link
-                    href={`/dashboard/admin/financeiro/repasses/${payout.id}`}
-                    className="mt-4 inline-flex rounded-xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
-                  >
-                    Ver repasse
-                  </Link>
-                </div>
+                  payoutId={payout.id}
+                  doctorName={payout.doctor.user.name}
+                  amount={Number(payout.amount)}
+                  createdAt={payout.createdAt}
+                />
               ))}
             </IssueSection>
 
@@ -369,11 +347,11 @@ export default async function AdminFinanceiroConciliacaoPage() {
                 <PaymentIssueCard
                   key={payment.id}
                   paymentId={payment.id}
+                  appointmentId={payment.appointmentId}
                   patientName={payment.patient.user.name}
                   doctorName={payment.doctor.user.name}
                   date={payment.createdAt}
                   amount={Number(payment.amount)}
-                  href={`/dashboard/admin/financeiro/${payment.id}`}
                 />
               ))}
             </IssueSection>
@@ -433,38 +411,150 @@ function IssueSection({
 
 function PaymentIssueCard({
   paymentId,
+  appointmentId,
   patientName,
   doctorName,
   date,
   amount,
-  href,
+  highlightLabel = "Valor",
 }: Readonly<{
   paymentId: string;
+  appointmentId?: string | null;
   patientName: string;
   doctorName: string;
   date: Date;
   amount: number;
-  href: string;
+  highlightLabel?: string;
 }>) {
   return (
     <div className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
       <p className="font-extrabold text-[#08553F]">{patientName}</p>
+
       <p className="mt-1 text-sm text-[#878787]">Médico: {doctorName}</p>
-      <p className="mt-1 text-sm text-[#878787]">
-        Data: {formatDate(date)}
+
+      <p className="mt-1 text-sm text-[#878787]">Data: {formatDate(date)}</p>
+
+      <p className="mt-1 text-sm font-bold text-[#08553F]">
+        {highlightLabel}: {formatCurrency(amount)}
       </p>
+
+      <p className="mt-2 max-w-full truncate text-xs text-[#878787]">
+        Pagamento: {paymentId}
+      </p>
+
+      {appointmentId ? (
+        <p className="mt-1 max-w-full truncate text-xs text-[#878787]">
+          Consulta: {appointmentId}
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href={`/dashboard/admin/financeiro/${paymentId}`}
+          className="rounded-xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+        >
+          Abrir pagamento
+        </Link>
+
+        {appointmentId ? (
+          <Link
+            href={`/dashboard/admin/consultas?appointmentId=${appointmentId}`}
+            className="rounded-xl border border-[#08553F]/30 bg-white px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+          >
+            Abrir consulta
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AppointmentIssueCard({
+  appointmentId,
+  paymentId,
+  patientName,
+  doctorName,
+  date,
+  paymentStatus,
+}: Readonly<{
+  appointmentId: string;
+  paymentId: string | null;
+  patientName: string;
+  doctorName: string;
+  date: Date;
+  paymentStatus: string;
+}>) {
+  return (
+    <div className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+      <p className="font-extrabold text-[#08553F]">{patientName}</p>
+
+      <p className="mt-1 text-sm text-[#878787]">Médico: {doctorName}</p>
+
+      <p className="mt-1 text-sm text-[#878787]">
+        Consulta: {formatDate(date)}
+      </p>
+
+      <p className="mt-2 text-sm font-bold text-[#08553F]">
+        Pagamento: {paymentStatus}
+      </p>
+
+      <p className="mt-2 max-w-full truncate text-xs text-[#878787]">
+        Consulta: {appointmentId}
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href={`/dashboard/admin/consultas?appointmentId=${appointmentId}`}
+          className="rounded-xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+        >
+          Abrir consulta
+        </Link>
+
+        {paymentId ? (
+          <Link
+            href={`/dashboard/admin/financeiro/${paymentId}`}
+            className="rounded-xl border border-[#08553F]/30 bg-white px-4 py-2 text-sm font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+          >
+            Abrir pagamento
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PayoutIssueCard({
+  payoutId,
+  doctorName,
+  amount,
+  createdAt,
+}: Readonly<{
+  payoutId: string;
+  doctorName: string;
+  amount: number;
+  createdAt: Date;
+}>) {
+  return (
+    <div className="rounded-2xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-5">
+      <p className="font-extrabold text-[#08553F]">{doctorName}</p>
+
+      <p className="mt-1 text-sm text-[#878787]">
+        Criado em: {formatDate(createdAt)}
+      </p>
+
       <p className="mt-1 text-sm font-bold text-[#08553F]">
         Valor: {formatCurrency(amount)}
       </p>
+
       <p className="mt-2 max-w-full truncate text-xs text-[#878787]">
-        {paymentId}
+        Repasse: {payoutId}
       </p>
 
       <Link
-        href={href}
+        href={`/dashboard/admin/financeiro/repasses/${payoutId}`}
         className="mt-4 inline-flex rounded-xl bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
       >
-        Ver pagamento
+        Abrir repasse
       </Link>
     </div>
   );

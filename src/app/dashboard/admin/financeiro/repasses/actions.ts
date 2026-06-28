@@ -6,12 +6,18 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 
+const REPASSES_PATH = "/dashboard/admin/financeiro/repasses";
+
 function getStartDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
 function getEndDate(value: string) {
   return new Date(`${value}T23:59:59.999Z`);
+}
+
+function redirectWithError(error: string): never {
+  redirect(`${REPASSES_PATH}?erro=${error}`);
 }
 
 export async function createDoctorPayout(formData: FormData) {
@@ -28,16 +34,23 @@ export async function createDoctorPayout(formData: FormData) {
   const endDateValue = String(formData.get("endDate") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
 
-  if (!doctorId) throw new Error("Médico não informado.");
+  if (!doctorId) {
+    redirectWithError("medico-nao-informado");
+  }
+
   if (!startDateValue || !endDateValue) {
-    throw new Error("Período do repasse não informado.");
+    redirectWithError("periodo-nao-informado");
   }
 
   const startDate = getStartDate(startDateValue);
   const endDate = getEndDate(endDateValue);
 
-  if (startDate > endDate) {
-    throw new Error("A data inicial não pode ser maior que a data final.");
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime()) ||
+    startDate > endDate
+  ) {
+    redirectWithError("periodo-invalido");
   }
 
   const doctor = await prisma.doctor.findUnique({
@@ -45,7 +58,11 @@ export async function createDoctorPayout(formData: FormData) {
     include: { user: true },
   });
 
-  if (!doctor) throw new Error("Médico não encontrado.");
+  if (!doctor) {
+    redirectWithError("medico-nao-encontrado");
+  }
+
+  const doctorName = doctor.user.name;
 
   const eligiblePayments = await prisma.payment.findMany({
     where: {
@@ -63,9 +80,7 @@ export async function createDoctorPayout(formData: FormData) {
   });
 
   if (eligiblePayments.length === 0) {
-    throw new Error(
-      "Nenhum pagamento pago e ainda não repassado foi encontrado para este médico no período informado."
-    );
+    redirectWithError("sem-pagamentos");
   }
 
   const amount = eligiblePayments.reduce(
@@ -116,7 +131,7 @@ export async function createDoctorPayout(formData: FormData) {
         action: "CREATE_DOCTOR_PAYOUT",
         entity: "DoctorPayout",
         entityId: createdPayout.id,
-        details: `Repasse automático criado para ${doctor.user.name}. Período: ${startDateValue} até ${endDateValue}. Pagamentos: ${eligiblePayments.length}. Bruto: R$ ${grossAmount.toFixed(
+        details: `Repasse automático criado para ${doctorName}. Período: ${startDateValue} até ${endDateValue}. Pagamentos: ${eligiblePayments.length}. Bruto: R$ ${grossAmount.toFixed(
           2
         )}. Comissão: R$ ${platformFee.toFixed(2)}. Médico: R$ ${amount.toFixed(
           2
@@ -137,12 +152,12 @@ export async function createDoctorPayout(formData: FormData) {
     )}.`,
   });
 
-  revalidatePath("/dashboard/admin/financeiro/repasses");
+  revalidatePath(REPASSES_PATH);
   revalidatePath("/dashboard/admin/financeiro");
   revalidatePath("/dashboard/admin/financeiro/extrato");
   revalidatePath("/dashboard/admin/financeiro/graficos");
   revalidatePath("/dashboard/medico/financeiro");
   revalidatePath("/dashboard/medico/extrato");
 
-  redirect("/dashboard/admin/financeiro/repasses?success=repasse-criado");
+  redirect(`${REPASSES_PATH}?success=repasse-criado`);
 }

@@ -11,6 +11,7 @@ import { createDoctorPayout } from "./actions";
 type AdminRepassesPageProps = {
   searchParams?: Promise<{
     success?: string;
+    erro?: string;
     previewDoctorId?: string;
     previewStartDate?: string;
     previewEndDate?: string;
@@ -38,6 +39,30 @@ function getSuccessMessage(success?: string) {
   return null;
 }
 
+function getErrorMessage(erro?: string) {
+  if (erro === "medico-nao-informado") {
+    return "Selecione um médico antes de gerar o fechamento.";
+  }
+
+  if (erro === "periodo-nao-informado") {
+    return "Informe a data inicial e a data final do período.";
+  }
+
+  if (erro === "periodo-invalido") {
+    return "O período informado é inválido. A data inicial não pode ser maior que a data final.";
+  }
+
+  if (erro === "medico-nao-encontrado") {
+    return "O médico selecionado não foi encontrado.";
+  }
+
+  if (erro === "sem-pagamentos") {
+    return "Nenhum pagamento pago e ainda não repassado foi encontrado para este médico no período informado.";
+  }
+
+  return null;
+}
+
 export default async function AdminRepassesPage({
   searchParams,
 }: AdminRepassesPageProps) {
@@ -56,6 +81,7 @@ export default async function AdminRepassesPage({
 
   const params = await searchParams;
   const successMessage = getSuccessMessage(params?.success);
+  const errorMessage = getErrorMessage(params?.erro);
 
   const previewDoctorId = params?.previewDoctorId ?? "";
   const previewStartDate = params?.previewStartDate ?? "";
@@ -259,6 +285,12 @@ export default async function AdminRepassesPage({
           {successMessage ? (
             <div className="mb-8 rounded-2xl border border-[#00CF7B]/30 bg-[#00CF7B]/10 p-4 text-sm font-bold text-[#08553F] shadow-sm">
               ✅ {successMessage}
+            </div>
+          ) : null}
+
+          {errorMessage ? (
+            <div className="mb-8 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700 shadow-sm">
+              ⚠️ {errorMessage}
             </div>
           ) : null}
 
@@ -569,7 +601,9 @@ export default async function AdminRepassesPage({
                         <th className="px-5 py-4 font-extrabold">Bruto</th>
                         <th className="px-5 py-4 font-extrabold">Comissão</th>
                         <th className="px-5 py-4 font-extrabold">Disponível</th>
-                        <th className="px-5 py-4 font-extrabold">Já repassado</th>
+                        <th className="px-5 py-4 font-extrabold">
+                          Já repassado
+                        </th>
                       </tr>
                     </thead>
 
