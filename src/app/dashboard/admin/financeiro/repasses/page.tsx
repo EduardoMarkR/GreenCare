@@ -660,9 +660,18 @@ export default async function AdminRepassesPage({
                             </p>
                           </div>
 
-                          <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
-                            {formatCurrency(Number(payout.amount))}
-                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <p className="rounded-full bg-[#00CF7B]/15 px-4 py-2 text-sm font-bold text-[#08553F]">
+                              {formatCurrency(Number(payout.amount))}
+                            </p>
+
+                            <Link
+                              href={`/dashboard/admin/financeiro/repasses/${payout.id}`}
+                              className="rounded-full bg-[#08553F] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                            >
+                              Ver detalhes
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     ))
