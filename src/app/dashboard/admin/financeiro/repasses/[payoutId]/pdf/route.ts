@@ -23,6 +23,28 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function getFinalY(doc: jsPDF, fallback: number) {
+  return (
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+      ?.finalY ?? fallback
+  );
+}
+
+function addFooter(doc: jsPDF, payoutId: string) {
+  const pageCount = doc.getNumberOfPages();
+
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `CannaDoctor - Repasse ${payoutId} - Pagina ${page} de ${pageCount}`,
+      14,
+      288
+    );
+  }
+}
+
 export async function GET(_: Request, { params }: Props) {
   const cookieStore = await cookies();
 
@@ -71,20 +93,64 @@ export async function GET(_: Request, { params }: Props) {
     0
   );
 
+  const isBalanced = Number(payout.amount) === doctorAmount;
   const doc = new jsPDF();
 
-  doc.setFontSize(18);
-  doc.text("CannaDoctor - Relatorio de Repasse Medico", 14, 18);
+  doc.setFillColor(8, 85, 63);
+  doc.rect(0, 0, 210, 34, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.text("CannaDoctor", 14, 16);
 
   doc.setFontSize(10);
-  doc.text(`Repasse: ${payout.id}`, 14, 28);
-  doc.text(`Gerado em: ${formatDate(new Date())}`, 14, 34);
+  doc.text("Relatorio oficial de repasse medico", 14, 24);
 
-  doc.setFontSize(13);
-  doc.text("Dados do medico", 14, 48);
+  doc.setFontSize(9);
+  doc.text(`Gerado em: ${formatDate(new Date())}`, 150, 16);
+  doc.text(`Status: ${isBalanced ? "Conciliado" : "Divergencia"}`, 150, 23);
+
+  doc.setTextColor(8, 85, 63);
+  doc.setFontSize(15);
+  doc.text("Resumo do fechamento", 14, 48);
 
   autoTable(doc, {
     startY: 54,
+    theme: "grid",
+    head: [["Indicador", "Valor"]],
+    body: [
+      ["ID do repasse", payout.id],
+      ["Periodo", `${formatDate(payout.startDate)} ate ${formatDate(payout.endDate)}`],
+      ["Medico", payout.doctor.user.name],
+      ["CRM", `${payout.doctor.crm}/${payout.doctor.crmUf}`],
+      ["Pagamentos vinculados", String(payout.payments.length)],
+      ["Valor bruto", formatCurrency(grossAmount)],
+      ["Comissao plataforma", formatCurrency(platformFee)],
+      ["Valor medico calculado", formatCurrency(doctorAmount)],
+      ["Valor do repasse", formatCurrency(Number(payout.amount))],
+      ["Conciliacao", isBalanced ? "Conciliado" : "Divergencia encontrada"],
+    ],
+    headStyles: {
+      fillColor: [8, 85, 63],
+      textColor: [255, 255, 255],
+    },
+    alternateRowStyles: {
+      fillColor: [247, 244, 231],
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+  });
+
+  const summaryFinalY = getFinalY(doc, 110);
+
+  doc.setTextColor(8, 85, 63);
+  doc.setFontSize(15);
+  doc.text("Dados do medico", 14, summaryFinalY + 14);
+
+  autoTable(doc, {
+    startY: summaryFinalY + 20,
     theme: "grid",
     head: [["Campo", "Valor"]],
     body: [
@@ -92,40 +158,29 @@ export async function GET(_: Request, { params }: Props) {
       ["E-mail", payout.doctor.user.email],
       ["Especialidade", payout.doctor.specialty],
       ["CRM", `${payout.doctor.crm}/${payout.doctor.crmUf}`],
-      ["Periodo", `${formatDate(payout.startDate)} ate ${formatDate(payout.endDate)}`],
       ["Observacao", payout.notes ?? "Sem observacoes"],
     ],
+    headStyles: {
+      fillColor: [8, 85, 63],
+      textColor: [255, 255, 255],
+    },
+    alternateRowStyles: {
+      fillColor: [247, 244, 231],
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
   });
 
-  const firstTableFinalY =
-    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
-      ?.finalY ?? 90;
+  const doctorFinalY = getFinalY(doc, 155);
 
-  doc.setFontSize(13);
-  doc.text("Resumo financeiro", 14, firstTableFinalY + 14);
-
-  autoTable(doc, {
-    startY: firstTableFinalY + 20,
-    theme: "grid",
-    head: [["Indicador", "Valor"]],
-    body: [
-      ["Pagamentos vinculados", String(payout.payments.length)],
-      ["Valor bruto", formatCurrency(grossAmount)],
-      ["Comissao plataforma", formatCurrency(platformFee)],
-      ["Valor medico calculado", formatCurrency(doctorAmount)],
-      ["Valor do repasse", formatCurrency(Number(payout.amount))],
-    ],
-  });
-
-  const secondTableFinalY =
-    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
-      ?.finalY ?? 130;
-
-  doc.setFontSize(13);
-  doc.text("Pagamentos vinculados", 14, secondTableFinalY + 14);
+  doc.setTextColor(8, 85, 63);
+  doc.setFontSize(15);
+  doc.text("Pagamentos vinculados", 14, doctorFinalY + 14);
 
   autoTable(doc, {
-    startY: secondTableFinalY + 20,
+    startY: doctorFinalY + 20,
     theme: "striped",
     head: [["Pago em", "Paciente", "Consulta", "Bruto", "Comissao", "Medico"]],
     body: payout.payments.map((payment) => [
@@ -138,13 +193,33 @@ export async function GET(_: Request, { params }: Props) {
       formatCurrency(Number(payment.platformFee)),
       formatCurrency(Number(payment.doctorAmount)),
     ]),
+    headStyles: {
+      fillColor: [8, 85, 63],
+      textColor: [255, 255, 255],
+      fontSize: 8,
+    },
+    alternateRowStyles: {
+      fillColor: [247, 244, 231],
+    },
     styles: {
       fontSize: 8,
-    },
-    headStyles: {
-      fontSize: 8,
+      cellPadding: 2,
     },
   });
+
+  const paymentsFinalY = getFinalY(doc, 230);
+
+  if (paymentsFinalY < 250) {
+    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(9);
+    doc.text(
+      "Documento gerado automaticamente pelo modulo financeiro do CannaDoctor.",
+      14,
+      paymentsFinalY + 14
+    );
+  }
+
+  addFooter(doc, payout.id);
 
   const pdfArrayBuffer = doc.output("arraybuffer");
 
