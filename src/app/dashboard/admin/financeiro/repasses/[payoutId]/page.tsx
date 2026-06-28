@@ -161,6 +161,15 @@ export default async function AdminPayoutDetailPage({ params }: Props) {
             >
               Ver extrato
             </Link>
+
+            <a
+            href={`/dashboard/admin/financeiro/repasses/${payout.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-2xl bg-[#F3EFA1] px-5 py-3 text-center font-bold text-[#08553F] shadow-sm transition hover:bg-[#00CF7B]"
+            >
+            Baixar PDF do repasse
+            </a>
           </div>
 
           <div className="mb-8 rounded-[2rem] bg-white p-6 shadow-sm">
