@@ -23,6 +23,18 @@ function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
+function getPaidAt(event: AsaasWebhookEvent) {
+  if (event.payment?.paymentDate) {
+    return new Date(event.payment.paymentDate);
+  }
+
+  if (event.payment?.clientPaymentDate) {
+    return new Date(event.payment.clientPaymentDate);
+  }
+
+  return new Date();
+}
+
 async function findPaymentByAsaasEvent(event: AsaasWebhookEvent) {
   const gatewayPaymentId = event.payment?.id;
   const externalReference = event.payment?.externalReference;
@@ -75,6 +87,101 @@ async function findPaymentByAsaasEvent(event: AsaasWebhookEvent) {
   });
 }
 
+async function ensureGoogleMeetForAppointment(appointmentId: string) {
+  const appointment = await prisma.appointment.findUnique({
+    where: {
+      id: appointmentId,
+    },
+    select: {
+      id: true,
+      meetingUrl: true,
+      googleEventId: true,
+    },
+  });
+
+  if (!appointment || appointment.meetingUrl) {
+    return appointment?.meetingUrl ?? null;
+  }
+
+  try {
+    const meet = await createGoogleMeetEvent({
+      appointmentId: appointment.id,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "GOOGLE_MEET_CREATED_BY_ASAAS_WEBHOOK",
+        entity: "Appointment",
+        entityId: appointment.id,
+        details:
+          "Google Meet criado automaticamente após confirmação de pagamento via webhook Asaas.",
+      },
+    });
+
+    return meet.meetingUrl;
+  } catch (error) {
+    console.error("Webhook Asaas: erro ao criar Google Meet", error);
+
+    await prisma.auditLog.create({
+      data: {
+        action: "GOOGLE_MEET_CREATION_FAILED_BY_ASAAS_WEBHOOK",
+        entity: "Appointment",
+        entityId: appointment.id,
+        details:
+          "Falha ao criar Google Meet automaticamente após confirmação de pagamento via webhook Asaas.",
+      },
+    });
+
+    return null;
+  }
+}
+
+async function sendConfirmationEmails(params: {
+  patientEmail: string;
+  patientName: string;
+  doctorEmail: string;
+  doctorName: string;
+  appointmentDate: Date;
+  appointmentTime: string;
+  meetUrl: string | null;
+}) {
+  const appUrl = getAppUrl();
+
+  try {
+    await sendEmail({
+      to: params.patientEmail,
+      subject: "Pagamento aprovado e consulta confirmada | CannaDoctor",
+      html: appointmentConfirmedPatientEmail({
+        patientName: params.patientName,
+        doctorName: params.doctorName,
+        date: formatDate(params.appointmentDate),
+        time: params.appointmentTime,
+        meetUrl: params.meetUrl,
+        dashboardUrl: `${appUrl}/dashboard/paciente`,
+      }),
+    });
+  } catch (error) {
+    console.error("Webhook Asaas: erro ao enviar e-mail ao paciente", error);
+  }
+
+  try {
+    await sendEmail({
+      to: params.doctorEmail,
+      subject: "Consulta confirmada após pagamento | CannaDoctor",
+      html: paymentApprovedDoctorEmail({
+        doctorName: params.doctorName,
+        patientName: params.patientName,
+        date: formatDate(params.appointmentDate),
+        time: params.appointmentTime,
+        meetUrl: params.meetUrl,
+        dashboardUrl: `${appUrl}/dashboard/medico/consultas`,
+      }),
+    });
+  } catch (error) {
+    console.error("Webhook Asaas: erro ao enviar e-mail ao médico", error);
+  }
+}
+
 async function handleConfirmedPayment(event: AsaasWebhookEvent) {
   const gatewayPaymentId = event.payment?.id;
 
@@ -93,34 +200,51 @@ async function handleConfirmedPayment(event: AsaasWebhookEvent) {
     return;
   }
 
-  if (payment.status === PaymentStatus.PAID) {
-    return;
+  let meetUrl = payment.appointment.meetingUrl;
+
+  if (payment.status !== PaymentStatus.PAID) {
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: {
+          id: payment.id,
+        },
+        data: {
+          status: PaymentStatus.PAID,
+          paidAt: getPaidAt(event),
+          gatewayPaymentId,
+          externalId: gatewayPaymentId,
+          invoiceUrl: event.payment?.invoiceUrl ?? payment.invoiceUrl,
+          boletoUrl: event.payment?.bankSlipUrl ?? payment.boletoUrl,
+          externalUrl: event.payment?.invoiceUrl ?? payment.externalUrl,
+          webhookPayload: event,
+        },
+      });
+
+      await tx.appointment.update({
+        where: {
+          id: payment.appointmentId,
+        },
+        data: {
+          status: AppointmentStatus.CONFIRMED,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "PAYMENT_APPROVED_BY_ASAAS_WEBHOOK",
+          entity: "Payment",
+          entityId: payment.id,
+          details: `Pagamento aprovado via webhook Asaas. Consulta ${payment.appointmentId} confirmada.`,
+        },
+      });
+    });
   }
 
-  const updatedPayment = await prisma.payment.update({
-    where: {
-      id: payment.id,
-    },
-    data: {
-      status: PaymentStatus.PAID,
-      paidAt: event.payment?.paymentDate
-        ? new Date(event.payment.paymentDate)
-        : new Date(),
-      gatewayPaymentId,
-      externalId: gatewayPaymentId,
-      invoiceUrl: event.payment?.invoiceUrl ?? payment.invoiceUrl,
-      boletoUrl: event.payment?.bankSlipUrl ?? payment.boletoUrl,
-      externalUrl: event.payment?.invoiceUrl ?? payment.externalUrl,
-      webhookPayload: event,
-    },
-  });
+  meetUrl = await ensureGoogleMeetForAppointment(payment.appointmentId);
 
-  const updatedAppointment = await prisma.appointment.update({
+  const appointment = await prisma.appointment.findUnique({
     where: {
       id: payment.appointmentId,
-    },
-    data: {
-      status: AppointmentStatus.CONFIRMED,
     },
     include: {
       availability: true,
@@ -137,64 +261,20 @@ async function handleConfirmedPayment(event: AsaasWebhookEvent) {
     },
   });
 
-  let meetUrl = updatedAppointment.meetingUrl;
-
-  try {
-    if (!meetUrl) {
-      const meet = await createGoogleMeetEvent({
-        appointmentId: updatedAppointment.id,
-      });
-
-      meetUrl = meet.meetingUrl;
-    }
-  } catch (error) {
-    console.error("Webhook Asaas: erro ao criar Google Meet", error);
+  if (!appointment) {
+    return;
   }
 
-  const appUrl = getAppUrl();
-  const time = updatedAppointment.availability?.startTime ?? "Não informado";
+  const time = appointment.availability?.startTime ?? "Não informado";
 
-  try {
-    await sendEmail({
-      to: updatedAppointment.patient.user.email,
-      subject: "Pagamento aprovado e consulta confirmada | CannaDoctor",
-      html: appointmentConfirmedPatientEmail({
-        patientName: updatedAppointment.patient.user.name,
-        doctorName: updatedAppointment.doctor.user.name,
-        date: formatDate(updatedAppointment.date),
-        time,
-        meetUrl,
-        dashboardUrl: `${appUrl}/dashboard/paciente`,
-      }),
-    });
-  } catch (error) {
-    console.error("Webhook Asaas: erro ao enviar e-mail ao paciente", error);
-  }
-
-  try {
-    await sendEmail({
-      to: updatedAppointment.doctor.user.email,
-      subject: "Consulta confirmada após pagamento | CannaDoctor",
-      html: paymentApprovedDoctorEmail({
-        doctorName: updatedAppointment.doctor.user.name,
-        patientName: updatedAppointment.patient.user.name,
-        date: formatDate(updatedAppointment.date),
-        time,
-        meetUrl,
-        dashboardUrl: `${appUrl}/dashboard/medico/consultas`,
-      }),
-    });
-  } catch (error) {
-    console.error("Webhook Asaas: erro ao enviar e-mail ao médico", error);
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      action: "PAYMENT_APPROVED_BY_ASAAS_WEBHOOK",
-      entity: "Payment",
-      entityId: updatedPayment.id,
-      details: `Pagamento aprovado via webhook Asaas. Consulta ${updatedAppointment.id} confirmada.`,
-    },
+  await sendConfirmationEmails({
+    patientEmail: appointment.patient.user.email,
+    patientName: appointment.patient.user.name,
+    doctorEmail: appointment.doctor.user.email,
+    doctorName: appointment.doctor.user.name,
+    appointmentDate: appointment.date,
+    appointmentTime: time,
+    meetUrl,
   });
 }
 
@@ -220,35 +300,37 @@ async function handleCancelledPayment(event: AsaasWebhookEvent) {
     return;
   }
 
-  await prisma.payment.update({
-    where: {
-      id: payment.id,
-    },
-    data: {
-      status: PaymentStatus.CANCELLED,
-      cancelledAt: new Date(),
-      gatewayPaymentId,
-      externalId: gatewayPaymentId,
-      webhookPayload: event,
-    },
-  });
+  await prisma.$transaction(async (tx) => {
+    await tx.payment.update({
+      where: {
+        id: payment.id,
+      },
+      data: {
+        status: PaymentStatus.CANCELLED,
+        cancelledAt: new Date(),
+        gatewayPaymentId,
+        externalId: gatewayPaymentId,
+        webhookPayload: event,
+      },
+    });
 
-  await prisma.appointment.update({
-    where: {
-      id: payment.appointmentId,
-    },
-    data: {
-      status: AppointmentStatus.CANCELLED,
-    },
-  });
+    await tx.appointment.update({
+      where: {
+        id: payment.appointmentId,
+      },
+      data: {
+        status: AppointmentStatus.CANCELLED,
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      action: "PAYMENT_CANCELLED_BY_ASAAS_WEBHOOK",
-      entity: "Payment",
-      entityId: payment.id,
-      details: "Pagamento cancelado via webhook Asaas.",
-    },
+    await tx.auditLog.create({
+      data: {
+        action: "PAYMENT_CANCELLED_BY_ASAAS_WEBHOOK",
+        entity: "Payment",
+        entityId: payment.id,
+        details: "Pagamento cancelado via webhook Asaas.",
+      },
+    });
   });
 }
 

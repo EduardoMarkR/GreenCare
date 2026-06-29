@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,7 @@ type PaymentStatusWatcherProps = {
   initialPaymentStatus: string;
   initialAppointmentStatus: string;
   initialMeetingUrl?: string | null;
+  paymentCreatedAt?: string | Date | null;
 };
 
 type PaymentStatusResponse = {
@@ -18,6 +19,13 @@ type PaymentStatusResponse = {
   meetingUrl?: string | null;
   paidAt?: string | null;
 };
+
+type ExpirePaymentResponse = {
+  ok: boolean;
+  expired?: boolean;
+};
+
+const PAYMENT_EXPIRATION_MINUTES = 20;
 
 function getPaymentLabel(status: string) {
   if (status === "PAID") return "Pagamento confirmado";
@@ -38,14 +46,38 @@ function getAppointmentLabel(status: string) {
   return status;
 }
 
+function getExpirationTimestamp(createdAt?: string | Date | null) {
+  if (!createdAt) return null;
+
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.getTime() + PAYMENT_EXPIRATION_MINUTES * 60 * 1000;
+}
+
+function formatCountdown(milliseconds: number) {
+  const safeMilliseconds = Math.max(milliseconds, 0);
+  const totalSeconds = Math.floor(safeMilliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0"
+  )}`;
+}
+
 export default function PaymentStatusWatcher({
   paymentId,
   initialPaymentStatus,
   initialAppointmentStatus,
   initialMeetingUrl,
+  paymentCreatedAt,
 }: PaymentStatusWatcherProps) {
   const router = useRouter();
   const hasRefreshedAfterPayment = useRef(false);
+  const hasExpiredPayment = useRef(false);
 
   const [paymentStatus, setPaymentStatus] = useState(initialPaymentStatus);
   const [appointmentStatus, setAppointmentStatus] = useState(
@@ -55,9 +87,66 @@ export default function PaymentStatusWatcher({
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(
     initialPaymentStatus === "PAID"
   );
+  const [now, setNow] = useState(() => Date.now());
+
+  const expiresAt = useMemo(
+    () => getExpirationTimestamp(paymentCreatedAt),
+    [paymentCreatedAt]
+  );
+
+  const remainingTime = expiresAt ? expiresAt - now : null;
 
   const isPaid = paymentStatus === "PAID";
+  const isCancelled = paymentStatus === "CANCELLED";
   const isChecking = paymentStatus === "PENDING";
+  const shouldShowTimer =
+    paymentStatus === "PENDING" && remainingTime !== null;
+
+  useEffect(() => {
+    if (!shouldShowTimer) return;
+
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [shouldShowTimer]);
+
+  useEffect(() => {
+    if (
+      paymentStatus !== "PENDING" ||
+      remainingTime === null ||
+      remainingTime > 0 ||
+      hasExpiredPayment.current
+    ) {
+      return;
+    }
+
+    async function expirePayment() {
+      hasExpiredPayment.current = true;
+
+      try {
+        const response = await fetch(`/api/payments/${paymentId}/expire`, {
+          method: "POST",
+          cache: "no-store",
+        });
+
+        const data = (await response.json()) as ExpirePaymentResponse;
+
+        if (data.ok && data.expired) {
+          setPaymentStatus("CANCELLED");
+          setAppointmentStatus("CANCELLED");
+
+          router.push("/dashboard/paciente");
+          router.refresh();
+        }
+      } catch (error) {
+        console.error("Erro ao expirar pagamento:", error);
+      }
+    }
+
+    expirePayment();
+  }, [paymentId, paymentStatus, remainingTime, router]);
 
   useEffect(() => {
     if (paymentStatus !== "PENDING") {
@@ -71,21 +160,24 @@ export default function PaymentStatusWatcher({
         });
 
         if (!response.ok) {
-        console.error(
+          console.error(
             "Erro na rota de status do pagamento:",
             response.status,
             response.statusText
-        );
-        return;
+          );
+          return;
         }
 
         const contentType = response.headers.get("content-type");
 
         if (!contentType?.includes("application/json")) {
-        const text = await response.text();
+          const text = await response.text();
 
-        console.error("A rota de status não retornou JSON:", text.slice(0, 200));
-        return;
+          console.error(
+            "A rota de status não retornou JSON:",
+            text.slice(0, 200)
+          );
+          return;
         }
 
         const data = (await response.json()) as PaymentStatusResponse;
@@ -131,7 +223,9 @@ export default function PaymentStatusWatcher({
       className={`mt-8 overflow-hidden rounded-3xl border p-6 transition-all ${
         isPaid
           ? "border-[#00CF7B]/30 bg-[#00CF7B]/10 shadow-[0_20px_60px_rgba(0,207,123,0.18)]"
-          : "border-[#C6C6C6]/60 bg-[#F7F4E7]"
+          : isCancelled
+            ? "border-red-200 bg-red-50"
+            : "border-[#C6C6C6]/60 bg-[#F7F4E7]"
       }`}
     >
       {showSuccessAnimation ? (
@@ -162,8 +256,33 @@ export default function PaymentStatusWatcher({
       <p className="mt-3 text-sm leading-6 text-[#878787]">
         {isPaid
           ? "Recebemos a confirmação do pagamento. Sua consulta já foi confirmada."
-          : "Estamos verificando automaticamente o status do pagamento. Você não precisa atualizar a página."}
+          : isCancelled
+            ? "O tempo para pagamento expirou. O horário foi liberado novamente."
+            : "Estamos verificando automaticamente o status do pagamento. Você não precisa atualizar a página."}
       </p>
+
+      {shouldShowTimer ? (
+        <div className="mt-5 rounded-3xl bg-white p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#878787]">
+            Tempo restante para pagamento
+          </p>
+
+          <p
+            className={`mt-2 text-4xl font-extrabold ${
+              remainingTime !== null && remainingTime <= 60 * 1000
+                ? "text-red-700"
+                : "text-[#08553F]"
+            }`}
+          >
+            {formatCountdown(remainingTime ?? 0)}
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-[#878787]">
+            Se o pagamento não for confirmado dentro desse prazo, esta reserva
+            será cancelada e o horário voltará para a agenda do médico.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <div className="rounded-2xl bg-white p-4">

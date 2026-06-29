@@ -1,10 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CannaPageHero from "@/components/CannaPageHero";
+import PaymentSummary from "@/components/payment/PaymentSummary";
+import PaymentTimeline from "@/components/payment/PaymentTimeline";
+import PaymentSecurity from "@/components/payment/PaymentSecurity";
+import PixCard from "@/components/payment/PixCard";
+import CardForm from "@/components/payment/CardForm";
 import { prisma } from "@/lib/prisma";
 import PaymentStatusWatcher from "./PaymentStatusWatcher";
 
@@ -38,22 +42,6 @@ function getPaymentStatusLabel(status: string) {
   if (status === "CANCELLED") return "Cancelado";
 
   return status;
-}
-
-function getPaymentStatusClass(status: string) {
-  if (status === "PAID") {
-    return "bg-[#00CF7B]/15 text-[#08553F] ring-[#00CF7B]/30";
-  }
-
-  if (status === "PENDING") {
-    return "bg-[#F3EFA1]/70 text-[#08553F] ring-[#F3EFA1]";
-  }
-
-  if (status === "CANCELLED" || status === "FAILED") {
-    return "bg-red-100 text-red-700 ring-red-200";
-  }
-
-  return "bg-[#F7F4E7] text-[#878787] ring-[#C6C6C6]";
 }
 
 function getMethodLabel(method?: string | null) {
@@ -135,14 +123,21 @@ export default async function PatientPaymentPage({
   }
 
   const isPaid = payment.status === "PAID";
+  const isPix = payment.method === "PIX";
+  const isCreditCard = payment.method === "CREDIT_CARD";
+  const totalAmount = Number(payment.amount);
+
+  const appointmentTime = payment.appointment.availability
+    ? `${payment.appointment.availability.startTime} às ${payment.appointment.availability.endTime}`
+    : "Não informado";
 
   return (
     <>
       <Navbar />
 
-      <main className="bg-[#F7F4E7]">
+      <main className="min-h-screen bg-[#F7F4E7]">
         <CannaPageHero
-          badge="Pagamento"
+          badge="Checkout seguro"
           title={
             isPaid
               ? "Pagamento confirmado"
@@ -150,102 +145,86 @@ export default async function PatientPaymentPage({
           }
           description={
             isPaid
-              ? "Sua consulta foi confirmada e a teleconsulta já está liberada ou em processo de criação."
+              ? "Sua consulta foi confirmada e a teleconsulta já está disponível ou em processo de criação."
               : "Após a confirmação do pagamento, sua consulta será confirmada automaticamente."
           }
+          backHref="/dashboard/paciente/pagamentos"
+          backLabel="Voltar aos pagamentos"
         />
 
-        <section className="mx-auto max-w-5xl px-6 py-16">
+        <section className="mx-auto max-w-7xl px-6 py-12">
           {query?.erro ? (
-            <div className="mb-8 rounded-3xl border border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-700">
+            <div className="mb-8 rounded-[2rem] border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-sm">
               {query.erro}
             </div>
           ) : null}
 
-          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
-              <div className="flex flex-col gap-4 border-b border-[#C6C6C6]/50 pb-6 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
-                    Consulta
-                  </p>
+          <PaymentTimeline
+            isPaid={isPaid}
+            hasMeetingUrl={Boolean(payment.appointment.meetingUrl)}
+          />
 
-                  <h2 className="mt-2 text-3xl font-extrabold text-[#08553F]">
-                    {payment.doctor.user.name}
-                  </h2>
-
-                  <p className="mt-2 text-[#878787]">
-                    {payment.doctor.specialty}
-                  </p>
-                </div>
-
-                <span
-                  className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-bold ring-1 ${getPaymentStatusClass(
-                    payment.status
-                  )}`}
-                >
-                  {getPaymentStatusLabel(payment.status)}
-                </span>
-              </div>
-
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
-                <div className="rounded-3xl bg-[#F7F4E7] p-5">
-                  <p className="text-sm font-bold text-[#878787]">Data</p>
-                  <p className="mt-2 text-lg font-extrabold text-[#08553F]">
-                    {formatDate(payment.appointment.date)}
-                  </p>
-                </div>
-
-                <div className="rounded-3xl bg-[#F7F4E7] p-5">
-                  <p className="text-sm font-bold text-[#878787]">Horário</p>
-                  <p className="mt-2 text-lg font-extrabold text-[#08553F]">
-                    {payment.appointment.availability?.startTime ??
-                      "Não informado"}
-                  </p>
-                </div>
-
-                <div className="rounded-3xl bg-[#F7F4E7] p-5">
-                  <p className="text-sm font-bold text-[#878787]">Método</p>
-                  <p className="mt-2 text-lg font-extrabold text-[#08553F]">
-                    {getMethodLabel(payment.method)}
-                  </p>
-                </div>
-
-                <div className="rounded-3xl bg-[#F7F4E7] p-5">
-                  <p className="text-sm font-bold text-[#878787]">Valor</p>
-                  <p className="mt-2 text-lg font-extrabold text-[#08553F]">
-                    {formatCurrency(Number(payment.amount))}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-8 rounded-3xl border border-[#C6C6C6]/60 bg-[#F7F4E7] p-6">
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
-                  Status da consulta
-                </p>
-
-                <p className="mt-3 text-lg font-extrabold text-[#08553F]">
-                  {getAppointmentStatusLabel(payment.appointment.status)}
-                </p>
-
-                <p className="mt-2 text-sm leading-6 text-[#878787]">
-                  {isPaid
-                    ? "Seu pagamento foi confirmado. A consulta está confirmada e a sala de teleconsulta será exibida assim que estiver disponível."
-                    : "Assim que o pagamento for confirmado pelo gateway, a consulta será confirmada e a sala de teleconsulta será liberada."}
-                </p>
-              </div>
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_440px]">
+            <div className="space-y-8">
+              <PaymentSummary
+                doctorName={payment.doctor.user.name}
+                specialty={payment.doctor.specialty}
+                date={formatDate(payment.appointment.date)}
+                time={appointmentTime}
+                methodLabel={getMethodLabel(payment.method)}
+                amount={formatCurrency(totalAmount)}
+                paymentStatusLabel={getPaymentStatusLabel(payment.status)}
+                appointmentStatusLabel={getAppointmentStatusLabel(
+                  payment.appointment.status
+                )}
+              />
 
               <PaymentStatusWatcher
                 paymentId={payment.id}
                 initialPaymentStatus={payment.status}
                 initialAppointmentStatus={payment.appointment.status}
                 initialMeetingUrl={payment.appointment.meetingUrl}
+                paymentCreatedAt={payment.createdAt.toISOString()}
               />
+
+              <PaymentSecurity />
             </div>
 
-            <aside className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
+            <aside className="space-y-8">
+              <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
+                  Total da consulta
+                </p>
+
+                <p className="mt-4 text-4xl font-extrabold text-[#08553F]">
+                  {formatCurrency(totalAmount)}
+                </p>
+
+                <div className="mt-6 space-y-3 rounded-3xl bg-[#F7F4E7] p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-bold text-[#878787]">
+                      Método
+                    </span>
+
+                    <span className="font-extrabold text-[#08553F]">
+                      {getMethodLabel(payment.method)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-bold text-[#878787]">
+                      Status
+                    </span>
+
+                    <span className="font-extrabold text-[#08553F]">
+                      {getPaymentStatusLabel(payment.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {isPaid ? (
-                <>
+                <div className="rounded-[2rem] border border-[#C6C6C6]/60 bg-white p-8 shadow-sm">
                   <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
                     Pagamento confirmado
                   </p>
@@ -270,7 +249,7 @@ export default async function PatientPaymentPage({
                       href={payment.appointment.meetingUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-6 block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#064331]"
+                      className="mt-6 block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
                     >
                       Entrar na teleconsulta
                     </a>
@@ -293,88 +272,61 @@ export default async function PatientPaymentPage({
                   >
                     Voltar aos pagamentos
                   </Link>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#878787]">
-                    Pagamento online
-                  </p>
+                </div>
+              ) : null}
 
-                  <h3 className="mt-3 text-2xl font-extrabold text-[#08553F]">
-                    Pague com segurança
-                  </h3>
+              {!isPaid && isPix ? (
+                <PixCard
+                  qrCode={payment.pixQrCode}
+                  copyPaste={payment.pixCopyPaste}
+                />
+              ) : null}
 
-                  {payment.pixQrCode ? (
-                    <div className="mt-8 rounded-3xl bg-[#F7F4E7] p-5 text-center">
-                      <Image
-                        src={`data:image/png;base64,${payment.pixQrCode}`}
-                        alt="QR Code PIX"
-                        width={224}
-                        height={224}
-                        unoptimized
-                        className="mx-auto h-56 w-56 rounded-2xl bg-white p-3"
-                      />
+              {!isPaid && isCreditCard ? (
+                <CardForm paymentId={payment.id} amount={totalAmount} />
+              ) : null}
 
-                      <p className="mt-4 text-sm font-semibold text-[#878787]">
-                        Escaneie o QR Code com o app do seu banco.
-                      </p>
-                    </div>
-                  ) : null}
+              {!isPaid && payment.invoiceUrl ? (
+                <a
+                  href={payment.invoiceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#00CF7B] hover:text-[#08553F]"
+                >
+                  Abrir link de pagamento
+                </a>
+              ) : null}
 
-                  {payment.pixCopyPaste ? (
-                    <div className="mt-6">
-                      <p className="mb-2 text-sm font-bold text-[#08553F]">
-                        PIX copia e cola
-                      </p>
+              {!isPaid && payment.boletoUrl ? (
+                <a
+                  href={payment.boletoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-2xl border border-[#08553F]/30 bg-white px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
+                >
+                  Abrir boleto
+                </a>
+              ) : null}
 
-                      <textarea
-                        readOnly
-                        value={payment.pixCopyPaste}
-                        className="h-32 w-full resize-none rounded-3xl border border-[#C6C6C6]/70 bg-[#F7F4E7] p-4 text-sm text-[#08553F] outline-none"
-                      />
-                    </div>
-                  ) : null}
+              {!isPaid &&
+              !payment.invoiceUrl &&
+              !payment.pixQrCode &&
+              !payment.pixCopyPaste &&
+              !payment.boletoUrl ? (
+                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+                  A cobrança ainda não foi gerada. Tente atualizar a página em
+                  alguns instantes.
+                </div>
+              ) : null}
 
-                  {payment.invoiceUrl ? (
-                    <a
-                      href={payment.invoiceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-6 block rounded-2xl bg-[#08553F] px-6 py-4 text-center font-bold text-white transition hover:bg-[#064331]"
-                    >
-                      Abrir link de pagamento
-                    </a>
-                  ) : null}
-
-                  {payment.boletoUrl ? (
-                    <a
-                      href={payment.boletoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-4 block rounded-2xl border border-[#08553F]/30 bg-[#F7F4E7] px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F3EFA1]"
-                    >
-                      Abrir boleto
-                    </a>
-                  ) : null}
-
-                  {!payment.invoiceUrl &&
-                  !payment.pixQrCode &&
-                  !payment.pixCopyPaste &&
-                  !payment.boletoUrl ? (
-                    <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
-                      A cobrança ainda não foi gerada. Tente atualizar a página
-                      em alguns instantes.
-                    </div>
-                  ) : null}
-
-                  <Link
-                    href="/dashboard/paciente/pagamentos"
-                    className="mt-6 block rounded-2xl border border-[#08553F]/30 px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
-                  >
-                    Voltar aos pagamentos
-                  </Link>
-                </>
-              )}
+              {!isPaid ? (
+                <Link
+                  href="/dashboard/paciente/pagamentos"
+                  className="block rounded-2xl border border-[#08553F]/30 bg-white px-6 py-4 text-center font-bold text-[#08553F] transition hover:bg-[#F7F4E7]"
+                >
+                  Voltar aos pagamentos
+                </Link>
+              ) : null}
             </aside>
           </div>
         </section>
